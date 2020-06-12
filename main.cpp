@@ -181,22 +181,24 @@ void PackDeck( Container& deck, Values&& values, Suits&& suits )
     }
 }
 
-template< typename Card >
-void CoutCard( Card&& c )
-{
-    std::cout << Card2Str( c ) << std::endl;
-}
-
 struct EmptyOstreamModifier
 {
     std::ostream& operator()( std::ostream& os )
     {
         return os;
     }
-};
+} emptyOsMod;
 
-template< typename Deck, typename PreCard = EmptyOstreamModifier, typename PostCard = EmptyOstreamModifier>
-void CoutDeck( Deck const& d, bool ordered = false )
+template< typename Card, typename PreCard = EmptyOstreamModifier, typename PostCard = EmptyOstreamModifier>
+void CoutCard( Card&& c, PreCard&& pre = std::move( emptyOsMod ), PostCard&& post = std::move( emptyOsMod ) )
+{
+    pre( std::cout );
+    std::cout << Card2Str( c );
+    post( std::cout );
+}
+
+template< typename Deck, typename PreCard = EmptyOstreamModifier, typename PostCard = EmptyOstreamModifier >
+void CoutDeck( Deck const& d, bool ordered = false, PreCard&& pre = std::move( emptyOsMod ), PostCard&& post = std::move( emptyOsMod ) )
 {
      // std::cout << "CoutDeck" << " " << d.size() << std::endl;
      bool needEndingNewLine = true;
@@ -204,7 +206,9 @@ void CoutDeck( Deck const& d, bool ordered = false )
      std::size_t i = 0u;
      for( auto const& card : d )
      {
-         CoutCard( card );
+         CoutCard( card, std::forward< PreCard >( pre ), std::forward< PostCard >( post ) );
+         std::cout << std::endl;
+
          if( ordered )
          {
              // placing separator line after each suit values listed, except end
@@ -364,14 +368,14 @@ struct GameInfo
 
 } G_GAME_INFO;
 
-Player& G_GET_HUMAN() 
+Player* G_GET_HUMAN() 
 {
-    return G_GAME_INFO.PLAYERS[ Player::ID::Human ];
+    return std::addressof( G_GAME_INFO.PLAYERS[ Player::ID::Human ] );
 }
 
-Player& G_GET_COMPUTER()
+Player* G_GET_COMPUTER()
 {
-    return G_GAME_INFO.PLAYERS[ Player::ID::Computer ];
+    return std::addressof( G_GAME_INFO.PLAYERS[ Player::ID::Computer ] );
 }
 
 DTA::CardType::SuitType G_GET_TRUMP()
@@ -628,23 +632,23 @@ void ComputerAttack( DTA::CardType card )
     Defend( card );
 }
 
-void HumanAttack( DTA::CardType card )
+void HumanAttack()
 {
-    std::cout << "Human attacks with: " << Card2Str( card ) << std::endl;
-    Defend( card );
+    std::cout << "Human attacks! " << std::endl;
+    // Defend( card );
 }
 
-void Attack( DTA::CardType card )
+void Attack()
 {
     ___ASSERT_ATT_DEF_INVARIANT___();
     switch( std::addressof(G_GAME_INFO.PLAYERS[ G_GAME_INFO.ATTACKER_ID ])->GetID() )
     {
     case Player::ID::Human: 
-        HumanAttack( card );
+        HumanAttack();
         break;
 
     case Player::ID::Computer: 
-        ComputerAttack( card );
+        ComputerAttack( G_GET_COMPUTER()->SelectCard( GetAbsSmallestCard) );
         break;
     }
 }
@@ -659,7 +663,7 @@ void ComputerDefend( DTA::CardType card )
 void HumanDefend( DTA::CardType attacker )
 {
     std::cout << "\tHuman defends from: " << Card2Str( attacker ) << std::endl;
-    Player& human = G_GET_HUMAN();
+    Player& human = *G_GET_HUMAN();
     const auto selector = [attacker]( DTA::CardType const& c )
     {
         if( c.GetSuit() == attacker.GetSuit() )
@@ -674,12 +678,25 @@ void HumanDefend( DTA::CardType attacker )
 
         return false;
     };
-    ;
+
+    std::cout << "Human hand: " << std::endl;
+    CoutDeck( human.SelectCards( []( DTA::CardType const& ) { return true; } ) );
 
     if( auto defenders = human.SelectCards( selector ); defenders.empty() == false )
     {
         std::cout << "\tHuman can beat attacker with following card(s):" << std::endl;
-        CoutDeck( defenders );
+        auto preTab = []( std::ostream& os ) -> std::ostream&
+        {      
+            return os << "\t";
+        };
+
+        std::size_t counter = 0u;
+        auto numOut = [&counter]( std::ostream& os ) -> std::ostream&
+        {
+            return os << " [" << counter++ << "]";
+        };
+
+        CoutDeck( defenders, false, preTab, numOut );
     }
     else
     {
@@ -724,7 +741,7 @@ void MakeFirstTurn( Player const& a, Player const& b )
     if( auto* attacker = std::addressof( G_GAME_INFO.PLAYERS[ G_GAME_INFO.ATTACKER_ID ] ) )
     {
         std::cout << "Attacker is: " << PlayerID2Str( attacker->GetID() ) << std::endl;
-        Attack( attacker->GrabCard( GetAbsSmallestCard ) );
+        Attack();
     }
     else
     {
@@ -765,14 +782,14 @@ int main()
     CoutDeck( deck );
 
     std::cout << "We've created players and inited human player: " << std::endl;
-    Player& human = G_GET_HUMAN();
+    Player& human = *G_GET_HUMAN();
     human.SetHand( GetHand( deck ) );
     CoutPlayerHand( human );
     //std::cout << "Deck after creating human player: " << std::endl;
     //CoutDeck( deck );
 
     std::cout << "We've inited computer player: " << std::endl;
-    Player& computer = G_GET_COMPUTER();
+    Player& computer = *G_GET_COMPUTER();
     computer.SetHand( GetHand( deck ) );
     CoutPlayerHand( computer );
     //std::cout << "Deck after creating computer player: " << std::endl;
