@@ -315,8 +315,13 @@ public:
     DTA::CardType GrabCard( F&& f )
     {
         auto card = SelectCard( std::forward< F >( f ) );
-        hand_.erase( std::remove( hand_.begin(), hand_.end(), card ), hand_.end() );
+        RemoveCardImpl( card );
         return card;
+    }
+
+    void RemoveCard( DTA::CardType card )
+    {
+        RemoveCardImpl( card );
     }
 
     void SetHand( DTA::ContainerType&& hand )
@@ -324,6 +329,12 @@ public:
         hand_ = std::move( hand );
     }
     
+private:
+    void RemoveCardImpl( DTA::CardType card )
+    {
+        hand_.erase( std::remove( hand_.begin(), hand_.end(), card ), hand_.end() );
+    }
+
 private:
    DTA::ContainerType hand_;
    ID id_;
@@ -711,23 +722,7 @@ bool HumanDefend( DTA::CardType attacker )
 
         assert( ("SELECTED CARD INDEX IS BIGGER THEN DEFENDERS VECTOR SIZE", number < defenderCandidats.size()) );
         auto defender = defenderCandidats[ number ];
-        auto removeDefender = [&defender]( DTA::ContainerType& hand )
-        {
-            for( auto const& card : hand )
-            {
-                if( defender == card )
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        };
-
-        static_cast< void >( human.GrabCard( removeDefender ) );
-        //    {
-        //        return card == defenderCandidats[ number ];
-        //    });
+        human.RemoveCard( defender );
 
         return true;
     }
