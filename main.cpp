@@ -392,6 +392,8 @@ struct GameInfo
     Player::ID DEFENDER_ID = Player::ID::Invalid;
 
     DTA::ContainerType DECK;
+    DTA::ContainerType ATTACKERS;
+    DTA::ContainerType DEFENDERS;
 
     std::map< Player::ID, Player > PLAYERS;
 
@@ -422,12 +424,12 @@ DTA::CardType G_GRAB_COMPUTER_SMALLEST_CARD()
     return card;
 }
 
-void Attack();
-void G_TURN_TRANSITION()
-{
-    std::swap( G_GAME_INFO.ATTACKER_ID, G_GAME_INFO.DEFENDER_ID );
-    Attack();
-}
+//void Attack();
+//void G_TURN_TRANSITION()
+//{
+//    std::swap( G_GAME_INFO.ATTACKER_ID, G_GAME_INFO.DEFENDER_ID );
+//    Attack();
+//}
 
 template< typename T >
 bool IsValid( T t )
@@ -597,147 +599,83 @@ void SetAttackerDefenderRoles( Player const& a, Player const& b )
     PlayerMapped2Card left2smallestTrump( &a, a.SelectCard( GetSmallestTrump ) ); // left right doesnt mean nothing, just to distinguish
     PlayerMapped2Card right2smallestTrump( &b, b.SelectCard( GetSmallestTrump ) );
 
-    std::cout << PlayerID2Str( left2smallestTrump.player->GetID() ) << " smallest trump: " << Card2Str( left2smallestTrump.card ) << std::endl;
-    std::cout << PlayerID2Str( right2smallestTrump.player->GetID() )  << " smallest trump: " << Card2Str( right2smallestTrump.card ) << std::endl;
+std::cout << PlayerID2Str( left2smallestTrump.player->GetID() ) << " smallest trump: " << Card2Str( left2smallestTrump.card ) << std::endl;
+std::cout << PlayerID2Str( right2smallestTrump.player->GetID() ) << " smallest trump: " << Card2Str( right2smallestTrump.card ) << std::endl;
 
-    Player const* attacker = nullptr;
-    Player const* defender = nullptr;
-    if( IsValid( left2smallestTrump.card ) && ( IsValid( right2smallestTrump.card ) == false ) ) // player B doesn't have trumps
+Player const* attacker = nullptr;
+Player const* defender = nullptr;
+if( IsValid( left2smallestTrump.card ) && ( IsValid( right2smallestTrump.card ) == false ) ) // player B doesn't have trumps
+{
+    attacker = left2smallestTrump.player;
+    defender = right2smallestTrump.player;
+}
+else if( IsValid( right2smallestTrump.card ) && ( IsValid( left2smallestTrump.card ) == false ) ) // player A doesn't have trumps
+{
+    attacker = right2smallestTrump.player;
+    defender = left2smallestTrump.player;
+}
+else if( IsValid( left2smallestTrump.card ) && IsValid( right2smallestTrump.card ) ) // both have trumps, selecting one with smallest value
+{
+    if( left2smallestTrump.card.GetValue() < right2smallestTrump.card.GetValue() )
     {
         attacker = left2smallestTrump.player;
         defender = right2smallestTrump.player;
     }
-    else if( IsValid( right2smallestTrump.card ) && ( IsValid( left2smallestTrump.card ) == false ) ) // player A doesn't have trumps
+    else
     {
         attacker = right2smallestTrump.player;
         defender = left2smallestTrump.player;
     }
-    else if ( IsValid( left2smallestTrump.card ) && IsValid( right2smallestTrump.card ) ) // both have trumps, selecting one with smallest value
+}
+else // no one have trumps, detecting by smallest value of card they have ( or player B if smallest values are equal )
+{
+    PlayerMapped2Card left2smallestCard( &a, a.SelectCard( GetSmallestValueGard ) );
+    PlayerMapped2Card right2smallestCard( &b, b.SelectCard( GetSmallestValueGard ) );
+    if( left2smallestCard.card.GetValue() < right2smallestCard.card.GetValue() )
     {
-        if( left2smallestTrump.card.GetValue() < right2smallestTrump.card.GetValue() )
-        {
-            attacker = left2smallestTrump.player;
-            defender = right2smallestTrump.player;
-        }
-        else
-        {
-            attacker = right2smallestTrump.player;
-            defender = left2smallestTrump.player;
-        }
+        attacker = left2smallestCard.player;
+        defender = right2smallestCard.player;
     }
-    else // no one have trumps, detecting by smallest value of card they have ( or player B if smallest values are equal )
+    else
     {
-        PlayerMapped2Card left2smallestCard( &a, a.SelectCard( GetSmallestValueGard ) );
-        PlayerMapped2Card right2smallestCard( &b, b.SelectCard( GetSmallestValueGard ) );
-        if( left2smallestCard.card.GetValue() < right2smallestCard.card.GetValue() )
-        {
-            attacker = left2smallestCard.player;
-            defender = right2smallestCard.player;
-        }
-        else
-        {
-            attacker = right2smallestCard.player;
-            defender = left2smallestCard.player;
-        }
-
-        std::cout << PlayerID2Str( left2smallestCard.player->GetID() ) << " smallest card: " << Card2Str( left2smallestCard.card ) << std::endl;
-        std::cout << PlayerID2Str( right2smallestCard.player->GetID() ) << " smallest card: " << Card2Str( right2smallestCard.card ) << std::endl;
-
+        attacker = right2smallestCard.player;
+        defender = left2smallestCard.player;
     }
 
-    if( attacker == nullptr )
-    {
-        std::cout << "Can't select first attacker!" << std::endl;
-        return;
-    }
+    std::cout << PlayerID2Str( left2smallestCard.player->GetID() ) << " smallest card: " << Card2Str( left2smallestCard.card ) << std::endl;
+    std::cout << PlayerID2Str( right2smallestCard.player->GetID() ) << " smallest card: " << Card2Str( right2smallestCard.card ) << std::endl;
 
-    if( defender == nullptr )
-    {
-        std::cout << "Can't select first attacker!" << std::endl;
-        return;
-    }
+}
 
-    G_GAME_INFO.ATTACKER_ID = attacker->GetID();
-    G_GAME_INFO.DEFENDER_ID = defender->GetID();
+if( attacker == nullptr )
+{
+    std::cout << "Can't select first attacker!" << std::endl;
+    return;
+}
+
+if( defender == nullptr )
+{
+    std::cout << "Can't select first attacker!" << std::endl;
+    return;
+}
+
+G_GAME_INFO.ATTACKER_ID = attacker->GetID();
+G_GAME_INFO.DEFENDER_ID = defender->GetID();
 }
 
 void ___ASSERT_ATT_DEF_INVARIANT___()
 {
     assert( ( "ATTACKER/DEFENDER INFO CORRUPTED",
-        IsValid( G_GAME_INFO.ATTACKER_ID ) && IsValid( G_GAME_INFO.DEFENDER_ID ) && G_GAME_INFO.ATTACKER_ID  != G_GAME_INFO.DEFENDER_ID ) );
+        IsValid( G_GAME_INFO.ATTACKER_ID ) && IsValid( G_GAME_INFO.DEFENDER_ID ) && G_GAME_INFO.ATTACKER_ID != G_GAME_INFO.DEFENDER_ID ) );
 }
 
 // // // // // // // // // // // // // 
 DTA::CardType Defend( DTA::CardType );
 
-void ComputerAttack( DTA::CardType attacker )
+DTA::CardType ComputerAttack( DTA::CardType attacker )
 {
     std::cout << "Computer attacks with: " << Card2Str( attacker ) << std::endl;
-
-    struct BEATEN
-    {
-        DTA::CardType ATTACKER;
-        DTA::CardType DEFENDER;
-    };
-    std::vector< BEATEN > beaten;
-
-    // // // // // // // // / // // // // 
-
-    auto defeater = Defend( attacker );
-    if( IsValid( defeater ) == false ) // can't defeat attacker
-    {
-        auto& deck = G_GAME_INFO.DECK;
-        if( deck.empty() )
-        {
-            std::cout << "Computer won!" << std::endl;
-            return;
-        }
-
-        while( deck.size() && G_GET_COMPUTER()->HandSize() < C_DEFAULT_HANDSIZE )
-        {
-            G_GET_COMPUTER()->AddCard( deck.back() );
-            deck.pop_back();
-        }
-
-        ComputerAttack( G_GRAB_COMPUTER_SMALLEST_CARD() );
-    }
-    else // trying to find matching cards in computer hand to proceed attack
-    {
-        beaten.push_back( { attacker, defeater } );
-        const auto intersection = [&beaten]( DTA::CardType card )
-        {
-            for( auto& ad : beaten )
-            {
-                if( ad.ATTACKER.GetValue() == card.GetValue() || 
-                    ad.DEFENDER.GetValue() == card.GetValue() )
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        };
-
-        if( auto similarForPlanting = G_GET_COMPUTER()->SelectCards( intersection ); similarForPlanting.empty() == false )
-        {
-            for( auto const& card : similarForPlanting )
-            {
-                auto defendResult = Defend( card );
-                while( IsValid( defendResult) )
-                {
-					// we need to find conditions to be able to planlt cards if defender can't beat em
-					break;
-                };
-            }
-        }
-    }
-
-    // // // // // // // // / // // // // 
-    std::cout << "All cards beated! End of the turn!" << std::endl;
-
-    G_TURN_TRANSITION();
-
-    // // // // // // // // / // // // // 
+    return Defend( attacker );
 }
 
 void HumanAttack()
@@ -749,15 +687,19 @@ void HumanAttack()
 void Attack()
 {
     ___ASSERT_ATT_DEF_INVARIANT___();
-    switch( std::addressof(G_GAME_INFO.PLAYERS[ G_GAME_INFO.ATTACKER_ID ])->GetID() )
-    {
-    case Player::ID::Human: 
-        HumanAttack();
-        break;
 
-    case Player::ID::Computer: 
-        ComputerAttack( G_GRAB_COMPUTER_SMALLEST_CARD() );
-        break;
+    auto attackerID = std::addressof( G_GAME_INFO.PLAYERS[ G_GAME_INFO.ATTACKER_ID ] )->GetID();
+    if( attackerID == Player::ID::Human )
+    {
+        HumanAttack();
+    }
+    else
+    {
+        DTA::CardType defender = ComputerAttack( G_GRAB_COMPUTER_SMALLEST_CARD() );
+        if( IsValid( defender ) ) 
+        {
+            G_GAME_INFO.DEFENDERS.emplace_back( defender );
+        }
     }
 }
 
