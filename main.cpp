@@ -271,7 +271,7 @@ public:
 
 public:
     Player::ID GetID() const { return id_; }
-    std::size_t HandSize() const { return hand_.size(); }
+    // std::size_t HandSize() const { return hand_.size(); }
     
     template< typename F >
     DTA::CardType SelectCard( F&& f ) const
@@ -650,7 +650,7 @@ void Attack()
     }
 }
 
-void Defend( DTA::ContainerType& )
+void Defend( DTA::ContainerType& deck )
 {
 
 }
