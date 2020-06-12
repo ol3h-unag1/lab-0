@@ -320,50 +320,6 @@ void CoutPlayerHand( Player const& p )
 // // // // // // // // // // // // // 
 
 /// <summary>
-/// TABLE
-/// </summary>
-void Defend( DTA::ContainerType& );
-class Table
-{
-public:
-    Table()
-    {}
-
-public:
-    template< typename Card >
-    void Attack(Card&& firstAttack )
-    {
-        // // // error handling
-        if( IsValid( firstAttack ) == false )
-        {
-            std::cout << "Table can't be attacked with invalid card" << std::endl;
-            return;
-        }
-        // // //
-
-        attackingCards_.emplace_back( std::move( firstAttack ) );
-        doAttack();
-    }
-
-private:
-    void doAttack()
-    {
-        while( attackingCards_.empty() == false )
-        {
-            Defend( attackingCards_ );
-        }
-    }
-
-private:
-    DTA::ContainerType attackingCards_;
-    DTA::ContainerType defeatedCards_;
-
-    DTA::ContainerType waste_;
-};
-
-// // // // // // // // // // // // // 
-
-/// <summary>
 /// GAME INFO TABLE
 /// </summary>
 struct GameInfo
@@ -378,8 +334,6 @@ struct GameInfo
 
     Player::ID ATTACKER_ID = Player::ID::Invalid;
     Player::ID DEFENDER_ID = Player::ID::Invalid;
-
-    Table GAME_TABLE;
 
     DTA::ContainerType DECK;
 
@@ -619,40 +573,63 @@ void SetAttackerDefenderRoles( Player const& a, Player const& b )
     G_GAME_INFO.DEFENDER_ID = defender->GetID();
 }
 
-void ComputerAttack()
+void ___ASSERT_ATT_DEF_INVARIANT___()
 {
-    assert( ("Computer is't attacker", G_GAME_INFO.ATTACKER_ID == Player::ID::Computer) );
-    auto& comp = G_GAME_INFO.PLAYERS[ Player::ID::Computer ];
-    auto smallest = comp.GrabCard( GetAbsSmallestCard );
-    auto& table = G_GAME_INFO.GAME_TABLE;
-
-    table.Attack( smallest );
-    //G_GAME_INFO.GAME_TABLE.Attack( std::addressof( p ), smallest, G_GAME_INFO.PLAYERS[ GET_ ] );
-    std::cout << "Computer attacks with: " << Card2Str( smallest ) << std::endl;
+    assert( ( "ATTACKER/DEFENDER INFO CORRUPTED",
+        IsValid( G_GAME_INFO.ATTACKER_ID ) && IsValid( G_GAME_INFO.DEFENDER_ID ) && G_GAME_INFO.ATTACKER_ID = !G_GAME_INFO.DEFENDER_ID ) );
 }
 
-void HumanAttack()
+void ComputerAttack( DTA::CardType card )
 {
-    std::cout << "Player attacks! (WiP)" << std::endl;
+    std::cout << "Computer attacks with: " << Card2Str( card ) << std::endl;
+    Defend( card );
 }
 
-void Attack()
+void HumanAttack( DTA::CardType card )
 {
+    std::cout << "Human attacks with: " << Card2Str( card ) << std::endl;
+    Defend( card );
+}
+
+void Attack( DTA::CardType card )
+{
+    ___ASSERT_ATT_DEF_INVARIANT___();
     switch( std::addressof(G_GAME_INFO.PLAYERS[ G_GAME_INFO.ATTACKER_ID ])->GetID() )
     {
     case Player::ID::Human: 
-        HumanAttack();
+        HumanAttack( card );
         break;
 
     case Player::ID::Computer: 
-        ComputerAttack();
+        ComputerAttack( card );
         break;
     }
 }
 
+void ComputerDefend( DTA::ContainerType& deck )
+{
+    std::cout << "Computer defends! (WiP)" << std::endl;
+}
+
+void HumanDefend( DTA::ContainerType& deck  )
+{
+    std::cout << "Computer defends! (WiP)" << std::endl;
+}
+
 void Defend( DTA::ContainerType& deck )
 {
+    ___ASSERT_ATT_DEF_INVARIANT___();
 
+    switch( std::addressof( G_GAME_INFO.PLAYERS[ G_GAME_INFO.DEFENDER_ID ] )->GetID() )
+    {
+    case Player::ID::Human:
+        HumanDefend( deck );
+        break;
+
+    case Player::ID::Computer:
+        ComputerDefend( deck );
+        break;
+    }
 }
 
 void MakeFirstTurn( Player const& a, Player const& b )
