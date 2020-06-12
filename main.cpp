@@ -292,6 +292,7 @@ public:
     void AddCard( DTA::CardType card )
     {
         hand_.push_back( card );
+        SortIml();
     }
 
     template< typename F >
@@ -339,6 +340,13 @@ private:
     void RemoveCardImpl( DTA::CardType card )
     {
         hand_.erase( std::remove( hand_.begin(), hand_.end(), card ), hand_.end() );
+    }
+    void SortIml()
+    {
+        std::sort( hand_.begin(), hand_.end(), []( DTA::CardType const& left, DTA::CardType const& right )
+            {
+                return left.GetValue() < right.GetValue();
+            } );
     }
 
 private:
@@ -405,11 +413,19 @@ DTA::CardType::SuitType G_GET_TRUMP()
 
 DTA::CardType G_INVALID_CARD() { return { Value::Invalid, Suit::Invalid }; }
 
+DTA::CardType GetAbsSmallestCard( DTA::ContainerType const& ); 
 DTA::CardType G_GRAB_COMPUTER_SMALLEST_CARD() 
 { 
     auto card = G_GET_COMPUTER()->SelectCard( GetAbsSmallestCard );
     G_GET_COMPUTER()->RemoveCard( card );
     return card;
+}
+
+void Attack();
+void G_TURN_TRANSITION()
+{
+    std::swap( G_GAME_INFO.ATTACKER_ID, G_GAME_INFO.DEFENDER_ID );
+    Attack();
 }
 
 template< typename T >
@@ -463,7 +479,7 @@ DTA::ContainerType GetHand( DTA::ContainerType& deck, std::size_t const handSize
     return DTA::ContainerType();
 }
 
-DTA::CardType const GetSmallestValueGard( DTA::ContainerType const& d )
+DTA::CardType GetSmallestValueGard( DTA::ContainerType const& d )
 {
     static DTA::CardType const invalid{ Value::Invalid, Suit::Invalid };
     DTA::CardType const* smallestValueCard = &invalid;
@@ -485,7 +501,7 @@ DTA::CardType const GetSmallestValueGard( DTA::ContainerType const& d )
     return *smallestValueCard;
 }
 
-DTA::CardType const GetSmallestTrump( DTA::ContainerType const& d )
+DTA::CardType GetSmallestTrump( DTA::ContainerType const& d )
 {
     static DTA::CardType const invalid{ Value::Invalid, Suit::Invalid };
     DTA::CardType const* smallestTrump = &invalid;
@@ -512,7 +528,7 @@ DTA::CardType const GetSmallestTrump( DTA::ContainerType const& d )
     return *smallestTrump;
 }
 
-DTA::CardType const GetAbsSmallestCard( DTA::ContainerType const& d )
+DTA::CardType GetAbsSmallestCard( DTA::ContainerType const& d )
 {
     static DTA::CardType const invalid{ Value::Invalid, Suit::Invalid };
     DTA::CardType const* smallest = &invalid;
@@ -664,6 +680,8 @@ void ComputerAttack( DTA::CardType attacker )
     };
     std::vector< BEATEN > beaten;
 
+    // // // // // // // // / // // // // 
+
     auto defeater = Defend( attacker );
     if( IsValid( defeater ) == false ) // can't defeat attacker
     {
@@ -682,7 +700,7 @@ void ComputerAttack( DTA::CardType attacker )
 
         ComputerAttack( G_GRAB_COMPUTER_SMALLEST_CARD() );
     }
-    else
+    else // trying to find matching cards in computer hand to proceed attack
     {
         beaten.push_back( { attacker, defeater } );
         const auto intersection = [&beaten]( DTA::CardType card )
@@ -698,10 +716,22 @@ void ComputerAttack( DTA::CardType attacker )
 
             return false;
         };
-        
-        auto similarForPlanting = G_GET_COMPUTER()->SelectCards( intersection );
-        if 
+
+        if( auto similarForPlanting = G_GET_COMPUTER()->SelectCards( intersection ); similarForPlanting.empty() == false )
+        {
+            for( auto const& card : similarForPlanting )
+            {
+                ComputerAttack( card );
+            }
+        }
     }
+
+    // // // // // // // // / // // // // 
+    std::cout << "All cards beated! End of the turn!" << std::endl;
+
+    G_TURN_TRANSITION();
+
+    // // // // // // // // / // // // // 
 }
 
 void HumanAttack()
@@ -782,6 +812,8 @@ DTA::CardType HumanDefend( DTA::CardType attacker )
         assert( ("SELECTED CARD INDEX IS BIGGER THEN DEFENDERS VECTOR SIZE", number < defenderCandidats.size()) );
         auto defender = defenderCandidats[ number ];
         human.RemoveCard( defender );
+
+        std::cout << "Human beated " << Card2Str( attacker ) << " with his " << Card2Str( defender ) << std::endl;
 
         return defender;
     }
