@@ -722,7 +722,12 @@ void ComputerAttack( DTA::CardType attacker )
         {
             for( auto const& card : similarForPlanting )
             {
-                ComputerAttack( card );
+                auto defendResult = Defend( card );
+                while( IsValid( defendResult) )
+                {
+					// we need to find conditions to be able to planlt cards if defender can't beat em
+					break;
+                };
             }
         }
     }
