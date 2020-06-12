@@ -341,6 +341,16 @@ struct GameInfo
 
 } G_GAME_INFO;
 
+Player& G_GET_HUMAN() 
+{
+    G_GAME_INFO.PLAYERS[ Player::ID::Human ];
+}
+
+Player& G_GET_COMPUTER()
+{
+    G_GAME_INFO.PLAYERS[ Player::ID::Human ];
+}
+
 template< typename T >
 bool IsValid( T t )
 {
@@ -609,12 +619,14 @@ void Attack( DTA::CardType card )
 
 void ComputerDefend( DTA::CardType card )
 {
-    std::cout << "Computer defends! (WiP)" << std::endl;
+    std::cout << "Computer defends from!" << Card2Str( card ) << "(WiP)" << std::endl;
 }
 
 void HumanDefend( DTA::CardType card )
 {
-    std::cout << "Human defends! (WiP)" << std::endl;
+    std::cout << " Human defends from!" << Card2Str( card ) << std::endl;
+    Player& human = G_GET_HUMAN();
+
 }
 
 void Defend( DTA::CardType card )
@@ -691,14 +703,14 @@ int main()
     CoutDeck( deck );
 
     std::cout << "We've created players and inited human player: " << std::endl;
-    Player& human = G_GAME_INFO.PLAYERS[ Player::ID::Human ];
+    Player& human = G_GET_HUMAN();
     human.SetHand( GetHand( deck ) );
     CoutPlayerHand( human );
     //std::cout << "Deck after creating human player: " << std::endl;
     //CoutDeck( deck );
 
     std::cout << "We've inited computer player: " << std::endl;
-    Player& computer = G_GAME_INFO.PLAYERS[ Player::ID::Computer ];
+    Player& computer = G_GET_COMPUTER();
     computer.SetHand( GetHand( deck ) );
     CoutPlayerHand( computer );
     //std::cout << "Deck after creating computer player: " << std::endl;
