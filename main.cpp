@@ -339,6 +339,7 @@ public:
 private:
     void RemoveCardImpl( DTA::CardType card )
     {
+        SortIml();
         hand_.erase( std::remove( hand_.begin(), hand_.end(), card ), hand_.end() );
     }
     void SortIml()
@@ -765,7 +766,7 @@ DTA::CardType ComputerDefend( DTA::CardType card )
 
 DTA::CardType HumanDefend( DTA::CardType attacker )
 {
-    std::cout << "\tHuman defends from: " << Card2Str( attacker ) << std::endl;
+    std::cout << "\n\tHuman defends from: " << Card2Str( attacker ) << std::endl;
     Player& human = *G_GET_HUMAN();
     const auto selector = [attacker]( DTA::CardType const& c )
     {
@@ -782,17 +783,16 @@ DTA::CardType HumanDefend( DTA::CardType attacker )
         return false;
     };
 
-    std::cout << "Human hand: " << std::endl;
-    CoutDeck( human.SelectCards( []( DTA::CardType const& ) { return true; } ) );
+    std::cout << "\tHuman hand: " << std::endl;
+    auto preTab = []( std::ostream& os ) -> std::ostream&
+    {
+        return os << "\t";
+    };
+    CoutDeck( human.SelectCards( []( DTA::CardType const& ) { return true; } ), false, preTab );
 
     if( auto defenderCandidats = human.SelectCards( selector ); defenderCandidats.empty() == false )
     {
         std::cout << "\tHuman can beat attacker with following card(s):" << std::endl;
-        auto preTab = []( std::ostream& os ) -> std::ostream&
-        {
-            return os << "\t";
-        };
-
         std::size_t counter = 0u;
         auto numOut = [&counter]( std::ostream& os ) -> std::ostream&
         {
