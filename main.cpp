@@ -576,9 +576,10 @@ void SetAttackerDefenderRoles( Player const& a, Player const& b )
 void ___ASSERT_ATT_DEF_INVARIANT___()
 {
     assert( ( "ATTACKER/DEFENDER INFO CORRUPTED",
-        IsValid( G_GAME_INFO.ATTACKER_ID ) && IsValid( G_GAME_INFO.DEFENDER_ID ) && G_GAME_INFO.ATTACKER_ID = !G_GAME_INFO.DEFENDER_ID ) );
+        IsValid( G_GAME_INFO.ATTACKER_ID ) && IsValid( G_GAME_INFO.DEFENDER_ID ) && G_GAME_INFO.ATTACKER_ID  != G_GAME_INFO.DEFENDER_ID ) );
 }
 
+void Defend( DTA::CardType card );
 void ComputerAttack( DTA::CardType card )
 {
     std::cout << "Computer attacks with: " << Card2Str( card ) << std::endl;
@@ -606,28 +607,28 @@ void Attack( DTA::CardType card )
     }
 }
 
-void ComputerDefend( DTA::ContainerType& deck )
+void ComputerDefend( DTA::CardType card )
 {
     std::cout << "Computer defends! (WiP)" << std::endl;
 }
 
-void HumanDefend( DTA::ContainerType& deck  )
+void HumanDefend( DTA::CardType card )
 {
-    std::cout << "Computer defends! (WiP)" << std::endl;
+    std::cout << "Human defends! (WiP)" << std::endl;
 }
 
-void Defend( DTA::ContainerType& deck )
+void Defend( DTA::CardType card )
 {
     ___ASSERT_ATT_DEF_INVARIANT___();
 
     switch( std::addressof( G_GAME_INFO.PLAYERS[ G_GAME_INFO.DEFENDER_ID ] )->GetID() )
     {
     case Player::ID::Human:
-        HumanDefend( deck );
+        HumanDefend( card );
         break;
 
     case Player::ID::Computer:
-        ComputerDefend( deck );
+        ComputerDefend( card );
         break;
     }
 }
@@ -651,7 +652,7 @@ void MakeFirstTurn( Player const& a, Player const& b )
     if( auto* attacker = std::addressof( G_GAME_INFO.PLAYERS[ G_GAME_INFO.ATTACKER_ID ] ) )
     {
         std::cout << "Attacker is: " << PlayerID2Str( attacker->GetID() ) << std::endl;
-        Attack();
+        Attack( attacker->GrabCard( GetAbsSmallestCard ) );
     }
     else
     {
