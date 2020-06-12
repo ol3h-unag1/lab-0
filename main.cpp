@@ -363,7 +363,7 @@ Player& G_GET_HUMAN()
 
 Player& G_GET_COMPUTER()
 {
-    return G_GAME_INFO.PLAYERS[ Player::ID::Human ];
+    return G_GAME_INFO.PLAYERS[ Player::ID::Computer ];
 }
 
 DTA::CardType::SuitType G_GET_TRUMP()
