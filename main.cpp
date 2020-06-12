@@ -280,6 +280,21 @@ public:
     }
 
     template< typename F >
+    DTA::ContainerType SelectCards( F&& f ) const
+    {
+        DTA::ContainerType satified;
+        for( const auto& card : hand_ )
+        {
+            if( f( card ) == true )
+            {
+                satified.push_back( card );
+            }
+        }
+
+        return satified;
+    }
+
+    template< typename F >
     DTA::CardType GrabCard( F&& f )
     {
         auto card = SelectCard( std::forward< F >( f ) );
@@ -343,12 +358,17 @@ struct GameInfo
 
 Player& G_GET_HUMAN() 
 {
-    G_GAME_INFO.PLAYERS[ Player::ID::Human ];
+    return G_GAME_INFO.PLAYERS[ Player::ID::Human ];
 }
 
 Player& G_GET_COMPUTER()
 {
-    G_GAME_INFO.PLAYERS[ Player::ID::Human ];
+    return G_GAME_INFO.PLAYERS[ Player::ID::Human ];
+}
+
+DTA::CardType::SuitType G_GET_TRUMP()
+{
+    return G_GAME_INFO.TRUMP;
 }
 
 template< typename T >
@@ -493,7 +513,9 @@ DTA::CardType const GetAbsSmallestCard( DTA::ContainerType const& d )
 }
 
 // // // // // // // // // // // // // 
-
+// // //
+// //
+//
 void SetAttackerDefenderRoles( Player const& a, Player const& b )
 {
     // // // error handling 
@@ -622,11 +644,25 @@ void ComputerDefend( DTA::CardType card )
     std::cout << "Computer defends from!" << Card2Str( card ) << "(WiP)" << std::endl;
 }
 
-void HumanDefend( DTA::CardType card )
+void HumanDefend( DTA::CardType attacker )
 {
-    std::cout << " Human defends from!" << Card2Str( card ) << std::endl;
+    std::cout << " Human defends from!" << Card2Str( attacker ) << std::endl;
     Player& human = G_GET_HUMAN();
+    const auto selector = [attacker]( DTA::CardType const& c )
+    {
+        if( c.GetSuit() == attacker.GetSuit() )
+        {
+            return c.GetValue() > attacker.GetValue();
+        }
 
+        if( c.GetSuit() == G_GET_TRUMP() )
+        {
+
+        }
+
+        return false;
+    };
+    human.SelectCards( selector );
 }
 
 void Defend( DTA::CardType card )
