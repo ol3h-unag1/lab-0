@@ -283,8 +283,13 @@ public:
 
 public:
     Player::ID GetID() const { return id_; }
-    // std::size_t HandSize() const { return hand_.size(); }
-    
+    // std::size_t HandSize() const { return hand_.size(); } 
+   
+    void AddCard( DTA::CardType card )
+    {
+        hand_.push_back( card );
+    }
+
     template< typename F >
     DTA::CardType SelectCard( F&& f ) const
     {
@@ -312,8 +317,6 @@ public:
         auto card = SelectCard( std::forward< F >( f ) );
         hand_.erase( std::remove( hand_.begin(), hand_.end(), card ), hand_.end() );
         return card;
-
-        //return DTA::CardType{ Value::Invalid, Suit::Invalid };
     }
 
     void SetHand( DTA::ContainerType&& hand )
@@ -660,7 +663,7 @@ void ComputerDefend( DTA::CardType card )
     std::cout << "\tComputer defends from: " << Card2Str( card ) << "(WiP)" << std::endl;
 }
 
-void HumanDefend( DTA::CardType attacker )
+bool HumanDefend( DTA::CardType attacker )
 {
     std::cout << "\tHuman defends from: " << Card2Str( attacker ) << std::endl;
     Player& human = *G_GET_HUMAN();
@@ -682,11 +685,11 @@ void HumanDefend( DTA::CardType attacker )
     std::cout << "Human hand: " << std::endl;
     CoutDeck( human.SelectCards( []( DTA::CardType const& ) { return true; } ) );
 
-    if( auto defenders = human.SelectCards( selector ); defenders.empty() == false )
+    if( auto defenderCandidats = human.SelectCards( selector ); defenderCandidats.empty() == false )
     {
         std::cout << "\tHuman can beat attacker with following card(s):" << std::endl;
         auto preTab = []( std::ostream& os ) -> std::ostream&
-        {      
+        {
             return os << "\t";
         };
 
@@ -696,26 +699,60 @@ void HumanDefend( DTA::CardType attacker )
             return os << " [" << counter++ << "]";
         };
 
-        CoutDeck( defenders, false, preTab, numOut );
+        CoutDeck( defenderCandidats, false, preTab, numOut );
+
+        std::size_t total = counter - 1;
+        std::size_t number = total + 1;
+        while( number > total )
+        {
+            std::cout << "Enter number between[ 0 : " << total << " ]" << std::endl;
+            std::cin >> number;
+        }
+
+        assert( ("SELECTED CARD INDEX IS BIGGER THEN DEFENDERS VECTOR SIZE", number < defenderCandidats.size()) );
+        auto defender = defenderCandidats[ number ];
+        auto removeDefender = [&defender]( DTA::ContainerType& hand )
+        {
+            for( auto const& card : hand )
+            {
+                if( defender == card )
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        };
+
+        static_cast< void >( human.GrabCard( removeDefender ) );
+        //    {
+        //        return card == defenderCandidats[ number ];
+        //    });
+
+        return true;
     }
     else
     {
         std::cout << "\tHuman can't beat attacker! " << Card2Str( attacker ) << " added to Human hand." << std::endl;
+        G_GET_HUMAN()->AddCard( attacker );
+        return false;
     }
+
+    return false;
 }
 
-void Defend( DTA::CardType card )
+void Defend( DTA::CardType attacker )
 {
     ___ASSERT_ATT_DEF_INVARIANT___();
 
     switch( std::addressof( G_GAME_INFO.PLAYERS[ G_GAME_INFO.DEFENDER_ID ] )->GetID() )
     {
     case Player::ID::Human:
-        HumanDefend( card );
+        HumanDefend( attacker );
         break;
 
     case Player::ID::Computer:
-        ComputerDefend( card );
+        ComputerDefend( attacker );
         break;
     }
 }
