@@ -187,7 +187,15 @@ void CoutCard( Card&& c )
     std::cout << Card2Str( c ) << std::endl;
 }
 
-template< typename Deck >
+struct EmptyOstreamModifier
+{
+    std::ostream& operator()( std::ostream& os )
+    {
+        return os;
+    }
+};
+
+template< typename Deck, typename PreCard = EmptyOstreamModifier, typename PostCard = EmptyOstreamModifier>
 void CoutDeck( Deck const& d, bool ordered = false )
 {
      // std::cout << "CoutDeck" << " " << d.size() << std::endl;
@@ -611,7 +619,9 @@ void ___ASSERT_ATT_DEF_INVARIANT___()
         IsValid( G_GAME_INFO.ATTACKER_ID ) && IsValid( G_GAME_INFO.DEFENDER_ID ) && G_GAME_INFO.ATTACKER_ID  != G_GAME_INFO.DEFENDER_ID ) );
 }
 
+// // // // // // // // // // // // // 
 void Defend( DTA::CardType card );
+
 void ComputerAttack( DTA::CardType card )
 {
     std::cout << "Computer attacks with: " << Card2Str( card ) << std::endl;
@@ -639,14 +649,16 @@ void Attack( DTA::CardType card )
     }
 }
 
+// // // // // // // // // // // // // 
+
 void ComputerDefend( DTA::CardType card )
 {
-    std::cout << "Computer defends from!" << Card2Str( card ) << "(WiP)" << std::endl;
+    std::cout << "\tComputer defends from: " << Card2Str( card ) << "(WiP)" << std::endl;
 }
 
 void HumanDefend( DTA::CardType attacker )
 {
-    std::cout << " Human defends from!" << Card2Str( attacker ) << std::endl;
+    std::cout << "\tHuman defends from: " << Card2Str( attacker ) << std::endl;
     Player& human = G_GET_HUMAN();
     const auto selector = [attacker]( DTA::CardType const& c )
     {
@@ -657,12 +669,22 @@ void HumanDefend( DTA::CardType attacker )
 
         if( c.GetSuit() == G_GET_TRUMP() )
         {
-
+            return true;
         }
 
         return false;
     };
-    human.SelectCards( selector );
+    ;
+
+    if( auto defenders = human.SelectCards( selector ); defenders.empty() == false )
+    {
+        std::cout << "\tHuman can beat attacker with following card(s):" << std::endl;
+        CoutDeck( defenders );
+    }
+    else
+    {
+        std::cout << "\tHuman can't beat attacker! " << Card2Str( attacker ) << " added to Human hand." << std::endl;
+    }
 }
 
 void Defend( DTA::CardType card )
@@ -680,6 +702,8 @@ void Defend( DTA::CardType card )
         break;
     }
 }
+
+// // // // // // // // // // // // // 
 
 void MakeFirstTurn( Player const& a, Player const& b )
 {
@@ -707,6 +731,8 @@ void MakeFirstTurn( Player const& a, Player const& b )
         std::cout << "Can't attack!" << std::endl;
     }
 }
+
+// // // // // // // // // // // // // 
 
 int main()
 {
