@@ -13,6 +13,15 @@
 
 #include <cassert>
 
+
+// // // // // // // // // // // // // 
+
+namespace MySetup
+{
+    std::vector< std::string > traceCollector;
+#define __TRACE_COLLECTOR__ traceCollector
+}
+
 #include "my_setup.hpp"
 
 // // // // // // // // // // // // // 
@@ -574,13 +583,13 @@ DTA::CardType GetAbsSmallestCard( DTA::ContainerType const& d )
 // // //
 // //
 //
-void SetAttackerDefenderRoles( Player const& a, Player const& b )
+bool SetAttackerDefenderRoles( Player const& a, Player const& b )
 {
     // // // error handling 
     if( IsValid( G_GAME_INFO.TRUMP ) == false )
     {
-        std::cout << "Invalid game info!";
-        return;
+        __COUT_FUNC_TRACE__( "Invalid game info!" );
+        return false;
     }
     // // //
 
@@ -599,22 +608,22 @@ void SetAttackerDefenderRoles( Player const& a, Player const& b )
     PlayerMapped2Card left2smallestTrump( &a, a.SelectCard( GetSmallestTrump ) ); // left right doesnt mean nothing, just to distinguish
     PlayerMapped2Card right2smallestTrump( &b, b.SelectCard( GetSmallestTrump ) );
 
-std::cout << PlayerID2Str( left2smallestTrump.player->GetID() ) << " smallest trump: " << Card2Str( left2smallestTrump.card ) << std::endl;
-std::cout << PlayerID2Str( right2smallestTrump.player->GetID() ) << " smallest trump: " << Card2Str( right2smallestTrump.card ) << std::endl;
-
-Player const* attacker = nullptr;
-Player const* defender = nullptr;
-if( IsValid( left2smallestTrump.card ) && ( IsValid( right2smallestTrump.card ) == false ) ) // player B doesn't have trumps
+    std::cout << PlayerID2Str( left2smallestTrump.player->GetID() ) << " smallest trump: " << Card2Str( left2smallestTrump.card ) << std::endl;
+    std::cout << PlayerID2Str( right2smallestTrump.player->GetID() ) << " smallest trump: " << Card2Str( right2smallestTrump.card ) << std::endl;
+    
+    Player const* attacker = nullptr;
+    Player const* defender = nullptr;
+    if( IsValid( left2smallestTrump.card ) && ( IsValid( right2smallestTrump.card ) == false ) ) // player B doesn't have trumps
 {
     attacker = left2smallestTrump.player;
     defender = right2smallestTrump.player;
 }
-else if( IsValid( right2smallestTrump.card ) && ( IsValid( left2smallestTrump.card ) == false ) ) // player A doesn't have trumps
+    else if( IsValid( right2smallestTrump.card ) && ( IsValid( left2smallestTrump.card ) == false ) ) // player A doesn't have trumps
 {
     attacker = right2smallestTrump.player;
     defender = left2smallestTrump.player;
 }
-else if( IsValid( left2smallestTrump.card ) && IsValid( right2smallestTrump.card ) ) // both have trumps, selecting one with smallest value
+    else if( IsValid( left2smallestTrump.card ) && IsValid( right2smallestTrump.card ) ) // both have trumps, selecting one with smallest value
 {
     if( left2smallestTrump.card.GetValue() < right2smallestTrump.card.GetValue() )
     {
@@ -627,7 +636,7 @@ else if( IsValid( left2smallestTrump.card ) && IsValid( right2smallestTrump.card
         defender = left2smallestTrump.player;
     }
 }
-else // no one have trumps, detecting by smallest value of card they have ( or player B if smallest values are equal )
+    else // no one have trumps, detecting by smallest value of card they have ( or player B if smallest values are equal )
 {
     PlayerMapped2Card left2smallestCard( &a, a.SelectCard( GetSmallestValueGard ) );
     PlayerMapped2Card right2smallestCard( &b, b.SelectCard( GetSmallestValueGard ) );
@@ -646,21 +655,23 @@ else // no one have trumps, detecting by smallest value of card they have ( or p
     std::cout << PlayerID2Str( right2smallestCard.player->GetID() ) << " smallest card: " << Card2Str( right2smallestCard.card ) << std::endl;
 
 }
+    
+    if( attacker == nullptr )
+    {
+        __COUT_FUNC_TRACE__( "Can't select first attacker!" );
+        return false;
+    }
+        
+    if( defender == nullptr )
+    {
+        __COUT_FUNC_TRACE__("Can't select first attacker!");
+        return false;
+    }
+        
+    G_GAME_INFO.ATTACKER_ID = attacker->GetID();
+    G_GAME_INFO.DEFENDER_ID = defender->GetID();
 
-if( attacker == nullptr )
-{
-    std::cout << "Can't select first attacker!" << std::endl;
-    return;
-}
-
-if( defender == nullptr )
-{
-    std::cout << "Can't select first attacker!" << std::endl;
-    return;
-}
-
-G_GAME_INFO.ATTACKER_ID = attacker->GetID();
-G_GAME_INFO.DEFENDER_ID = defender->GetID();
+    return true;
 }
 
 void ___ASSERT_ATT_DEF_INVARIANT___()
@@ -789,8 +800,9 @@ DTA::CardType Defend( DTA::CardType attacker )
 
 // // // // // // // // // // // // // 
 
-void MakeFirstTurn( Player const& a, Player const& b )
+void MakeTurn()
 {
+    Player a, b;
     // // // error handling 
     if( IsValid( a ) == false )
     {
@@ -804,7 +816,6 @@ void MakeFirstTurn( Player const& a, Player const& b )
     }
     // // //
 
-    SetAttackerDefenderRoles( a, b );
     if( auto* attacker = std::addressof( G_GAME_INFO.PLAYERS[ G_GAME_INFO.ATTACKER_ID ] ) )
     {
         std::cout << "Attacker is: " << PlayerID2Str( attacker->GetID() ) << std::endl;
@@ -818,31 +829,31 @@ void MakeFirstTurn( Player const& a, Player const& b )
 
 // // // // // // // // // // // // // 
 
-int main()
+bool Initialization()
 {
     std::cout << "We've created G_GAME_INFO. G_GAME_INFO.PLAYERS inited" << std::endl;
     auto& deck = G_GAME_INFO.DECK;
 
     std::cout << "We've created a deck: " << std::endl;
     PackDeck( deck, std::vector< Value >{
-                                            Value::Six, 
-                                            Value::Seven,       
-                                            Value::Eight,
-                                            Value::Ten,
-                                            Value::Jack,
-                                            Value::Queen,
-                                            Value::King,
-                                            Value::Ace
-                                        },
-                    std::vector< Suit >{
-                                            Suit::Hearts,
-                                            Suit::Spades,
-                                            Suit::Dimonds,
-                                            Suit::Clubs
-                                       } );
+        Value::Six,
+            Value::Seven,
+            Value::Eight,
+            Value::Ten,
+            Value::Jack,
+            Value::Queen,
+            Value::King,
+            Value::Ace
+    },
+        std::vector< Suit >{
+            Suit::Hearts,
+                Suit::Spades,
+                Suit::Dimonds,
+                Suit::Clubs
+        } );
 
 
-    CoutDeck( deck, true);
+    CoutDeck( deck, true );
 
     std::cout << "We've shuffled the deck: " << std::endl;
     ShuffleDeck( deck );
@@ -870,11 +881,25 @@ int main()
 
     std::cout << "We've detected trump suit: ";
     G_GAME_INFO.TRUMP = deck.front().GetSuit();
-    std::cout << Suit2Str( G_GAME_INFO.TRUMP ) << std::endl << std::endl; 
+    std::cout << Suit2Str( G_GAME_INFO.TRUMP ) << std::endl << std::endl;
+
+    return SetAttackerDefenderRoles( human, computer );
+}
+
+int main()
+{    
+    if( Initialization() )
+    {
+        std::cout << "--- INIT --- PHASE --- COMPLETE !!! ---" << std::endl;
+    }
+    else
+    {
+        std::cout << "--- !!! ABORTED --- INIT --- PHASE --- COMPLETE ---" << std::endl;
+        return 1;
+    }
 
     std::cout << "We've made turn!" << std::endl;
-    MakeFirstTurn( human, computer );
-    
+    MakeTurn();  
 
     // std::cout << "Human's smallest card in a hand: " << Card2Str( human.SelectCard( GetAbsSmallestCard ) ) << std::endl;
     // std::cout << "Computers's smallest card a hand: " << Card2Str( computer.SelectCard( GetAbsSmallestCard )  ) << std::endl;
