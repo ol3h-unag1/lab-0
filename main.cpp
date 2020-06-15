@@ -4,6 +4,7 @@
 #include <vector>
 
 #include <map>
+#include <set>
 
 #include <utility>
 #include <functional>
@@ -168,6 +169,21 @@ std::string Card2Str( Card const& c )
 
 // // // // // // // // // // // // // 
 
+template< typename Card >
+struct AttackerDefenderPair
+{
+    AttackerDefenderPair( Card attacker, Card defender )
+        : Attacker( attacker )
+        , Defender( defender )
+    {}
+
+    Card Attacker;
+    Card Defender;
+};
+
+using ADPair = AttackerDefenderPair< Card< Value, Suit > >;
+
+// // // // // // // // // // // // // 
 template< template < typename > typename Container, typename Card >
 struct DeckType
 {
@@ -259,31 +275,31 @@ void CoutDeck( Deck const& d, bool ordered = false, PreCard&& pre = std::move( e
  /// <summary>
 /// PLAYER CLASS
 /// </summary>
-class Player
-{
-public:
-    enum class ID
-    {
-        Human,
-        Computer,
+ class Player
+ {
+ public:
+     enum class ID
+     {
+         Human,
+         Computer,
 
-        Invalid
-    };
+         Invalid
+     };
 
-private:
-    Player( const Player& ) = delete;
+ private:
+     Player( const Player& ) = delete;
 
-private:
-    friend
-    void CoutPlayerHand( Player const&  );
-    
-public:
+ private:
+     friend
+         void CoutPlayerHand( Player const& );
+
+ public:
      Player()
-        : id_( Player::ID::Invalid )
+         : id_( Player::ID::Invalid )
      {}
 
      explicit Player( ID id )
-        : id_( id )
+         : id_( id )
      {}
 
      Player( Player&& source ) noexcept
@@ -294,49 +310,56 @@ public:
          source.id_ = Player::ID::Invalid;
      }
 
-public:
-    Player::ID GetID() const { return id_; }
-    // std::size_t HandSize() const { return hand_.size(); } 
-   
-    void AddCard( DTA::CardType card )
-    {
-        hand_.push_back( card );
-        SortIml();
-    }
+ public:
+     Player::ID GetID() const { return id_; }
+     // std::size_t HandSize() const { return hand_.size(); } 
 
-    template< typename F >
-    DTA::CardType SelectCard( F&& f ) const
-    {
-        return f( hand_ );
-    }
+     void AddCard( DTA::CardType card )
+     {
+         hand_.push_back( card );
+         SortIml();
+     }
 
-    template< typename F >
-    DTA::ContainerType SelectCards( F&& f ) const
-    {
-        DTA::ContainerType satified;
-        for( const auto& card : hand_ )
-        {
-            if( f( card ) == true )
-            {
-                satified.push_back( card );
-            }
-        }
+     template< typename F >
+     DTA::CardType SelectCard( F&& f ) const
+     {
+         return f( hand_ );
+     }
 
-        return satified;
-    }
+     template< typename F >
+     DTA::ContainerType SelectCards( F&& f ) const
+     {
+         DTA::ContainerType satified;
+         for( const auto& card : hand_ )
+         {
+             if( f( card ) == true )
+             {
+                 satified.push_back( card );
+             }
+         }
 
-    template< typename F >
-    DTA::CardType GrabCard( F&& f )
-    {
-        auto card = SelectCard( std::forward< F >( f ) );
-        RemoveCardImpl( card );
-        return card;
-    }
+         return satified;
+     }
 
-    void RemoveCard( DTA::CardType card )
-    {
-        RemoveCardImpl( card );
-    }
+     template< typename F >
+     DTA::CardType GrabCard( F&& f )
+     {
+         auto card = SelectCard( std::forward< F >( f ) );
+         RemoveCardImpl( card );
+         return card;
+     }
+
+     template< typename F >
+     DTA::ContainerType GrabCards( F&& f )
+     {
+         auto const cards = SelectCards( std::forward< F >( f ) );
+         for( auto const& card : cards )
+         {
+             RemoveCardImpl( card );
+         }
+     
+         return cards;
+     }
 
     void SetHand( DTA::ContainerType&& hand )
     {
@@ -364,7 +387,7 @@ private:
    ID id_;
 };
 
-const char* PlayerID2Str( Player::ID pk )
+std::string PlayerID2Str( Player::ID pk )
 {
     switch( pk )
     {
@@ -372,9 +395,9 @@ const char* PlayerID2Str( Player::ID pk )
     case Player::ID::Computer:  return "Computer";
     
     default:
-        return nullptr;
+        return "";
     }
-    return nullptr;
+    return "";
 }
 
 void CoutPlayerHand( Player const& p )
@@ -428,10 +451,10 @@ DTA::CardType G_INVALID_CARD() { return { Value::Invalid, Suit::Invalid }; }
 DTA::CardType GetAbsSmallestCard( DTA::ContainerType const& ); 
 DTA::CardType G_GRAB_COMPUTER_SMALLEST_CARD() 
 { 
-    auto card = G_GET_COMPUTER()->SelectCard( GetAbsSmallestCard );
-    G_GET_COMPUTER()->RemoveCard( card );
-    return card;
+    return G_GET_COMPUTER()->GrabCard( GetAbsSmallestCard );
 }
+
+DTA::CardType G_GRAB_SMALLEST_CARD();
 
 //void Attack();
 //void G_TURN_TRANSITION()
@@ -458,6 +481,8 @@ bool IsValid( DTA::CardType const& c )
 }
 
 // // // // // // // // // // // // // 
+
+// GLOBAL FUNCTORS
 
 DTA::ContainerType GetHand( DTA::ContainerType& deck, std::size_t const handSize = C_DEFAULT_HANDSIZE )
 {
@@ -547,7 +572,8 @@ DTA::CardType GetAbsSmallestCard( DTA::ContainerType const& d )
 
     for( auto const& card : d )
     {
-        if( IsValid( *smallest ) == false )
+        // init of the cycle
+        if( IsValid( *smallest ) == false ) // initialization
         {
             smallest = &card;
             continue;
@@ -578,6 +604,8 @@ DTA::CardType GetAbsSmallestCard( DTA::ContainerType const& d )
 
     return *smallest;
 }
+
+// // // // // // // // // // // // // 
 
 // // // // // // // // // // // // // 
 // // //
@@ -685,8 +713,57 @@ DTA::CardType Defend( DTA::CardType );
 
 DTA::CardType ComputerAttack( DTA::CardType attacker )
 {
-    std::cout << "Computer attacks with: " << Card2Str( attacker ) << std::endl;
-    return Defend( attacker );
+    using CT = DTA::CardType;
+    std::cout << "Computer attacks with: " << Card2Str( attacker ) << std::endl;  
+    
+    std::vector< CT > attackers;
+    attackers.push_back( attacker );
+    attacker = G_INVALID_CARD();
+
+    std::vector< CT > defenders;
+    CT defender = Defend( attacker );
+    while( IsValid( defender ) )
+    {
+        defenders.push_back( defender );
+        defender = G_INVALID_CARD();
+
+        __ASSERT_MSG__( attackers.size() == defenders.size(), 
+            "ComputerAttack:: DIFFERENT ATTACKERS AND DEFENDERS SIZES" );
+
+        __ASSERT_MSG__( attackers.size() == 1,
+            "ComputerAttack:: SOMETHING WRONG WITH SIZES, SIZES SHOULBE BE 1" );
+
+        __ASSERT_MSG__( IsValid( attacker ) || IsValid( defender ), 
+            "ComputerAttack:: DEINIT LOCAL STORAGE VALUES AFTER PUSHING TO THE VECTORS" );
+
+        auto intersector = [ &attackers, &defenders ]( CT const& card )
+        {
+            for( CT const& c : attackers )
+            {
+                if ( c.GetValue() == card.GetValue() )
+                    return true;                        
+            }
+
+            for( CT const& c : defenders )
+            {
+                if ( c.GetValue() == card.GetValue() )
+                    return true;
+            }
+
+            return false;
+        };
+        auto intersections = G_GET_COMPUTER()->GrabCards( intersector );
+
+        // card is beaten, no cards to add
+        if( intersections.empty() )
+        {
+            return G_INVALID_CARD();
+        }
+
+        
+    }
+
+    return G_INVALID_CARD();
 }
 
 void HumanAttack()
@@ -697,20 +774,15 @@ void HumanAttack()
 
 void Attack()
 {
-    ___ASSERT_ATT_DEF_INVARIANT___();
-
-    auto attackerID = std::addressof( G_GAME_INFO.PLAYERS[ G_GAME_INFO.ATTACKER_ID ] )->GetID();
-    if( attackerID == Player::ID::Human )
+    
+    if( auto attackerID = std::addressof( G_GAME_INFO.PLAYERS[ G_GAME_INFO.ATTACKER_ID ] )->GetID(); 
+        attackerID == Player::ID::Human )
     {
         HumanAttack();
     }
     else
     {
-        DTA::CardType defender = ComputerAttack( G_GRAB_COMPUTER_SMALLEST_CARD() );
-        if( IsValid( defender ) ) 
-        {
-            G_GAME_INFO.DEFENDERS.emplace_back( defender );
-        }
+        ComputerAttack( G_GRAB_COMPUTER_SMALLEST_CARD() );
     }
 }
 
@@ -722,6 +794,7 @@ DTA::CardType ComputerDefend( DTA::CardType card )
     return G_INVALID_CARD();
 }
 
+// rework
 DTA::CardType HumanDefend( DTA::CardType attacker )
 {
     std::cout << "\n\tHuman defends from: " << Card2Str( attacker ) << std::endl;
@@ -769,7 +842,7 @@ DTA::CardType HumanDefend( DTA::CardType attacker )
 
         assert( ("SELECTED CARD INDEX IS BIGGER THEN DEFENDERS VECTOR SIZE", number < defenderCandidats.size()) );
         auto defender = defenderCandidats[ number ];
-        human.RemoveCard( defender );
+        //human.RemoveCard( defender ); // use human.GrabCard instead ( reword this code ) 
 
         std::cout << "Human beated " << Card2Str( attacker ) << " with his " << Card2Str( defender ) << std::endl;
 
@@ -802,34 +875,22 @@ DTA::CardType Defend( DTA::CardType attacker )
 
 void MakeTurn()
 {
-    Player a, b;
-    // // // error handling 
-    if( IsValid( a ) == false )
-    {
-        std::cout << "Invalid first player-A";
-        return;
-    }
-    if( IsValid( b ) == false )
-    {
-        std::cout << "Invalid second player-B";
-        return;
-    }
-    // // //
-
+    ___ASSERT_ATT_DEF_INVARIANT___();
     if( auto* attacker = std::addressof( G_GAME_INFO.PLAYERS[ G_GAME_INFO.ATTACKER_ID ] ) )
     {
-        std::cout << "Attacker is: " << PlayerID2Str( attacker->GetID() ) << std::endl;
+        std::string const msg = "Attacker is: " + PlayerID2Str( attacker->GetID() );
+        __COUT_FUNC_TRACE__( msg );
         Attack();
     }
     else
     {
-        std::cout << "Can't attack!" << std::endl;
+        __COUT_FUNC_TRACE__( "Can't attack!" );
     }
 }
 
 // // // // // // // // // // // // // 
 
-bool Initialization()
+bool G__INITIALIZATION()
 {
     std::cout << "We've created G_GAME_INFO. G_GAME_INFO.PLAYERS inited" << std::endl;
     auto& deck = G_GAME_INFO.DECK;
@@ -888,7 +949,7 @@ bool Initialization()
 
 int main()
 {    
-    if( Initialization() )
+    if( G__INITIALIZATION() )
     {
         std::cout << "--- INIT --- PHASE --- COMPLETE !!! ---" << std::endl;
     }

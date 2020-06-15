@@ -18,3 +18,7 @@
 #define __COUT_FUNC_TRACE__(x) std::cout << __PRETTY_FUNCTION__ << ": " << (x) << std::endl; 
 #endif // __COUT_FUNC_TRACE__
 #endif //__TRACCE_COLLECTOR__
+
+#ifndef  __ASSERT_MSG__
+#define __ASSERT_MSG__( assertion, msg ) assert( ((msg), (assertion)) )
+#endif // __ASSERT_MSG__
