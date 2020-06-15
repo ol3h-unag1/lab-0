@@ -901,7 +901,7 @@ int main()
     std::cout << "We've made turn!" << std::endl;
     MakeTurn();  
 
-     std::cout << "Human's smallest card in a hand: " << Card2Str( human.SelectCard( GetAbsSmallestCard ) ) << std::endl;
+    // std::cout << "Human's smallest card in a hand: " << Card2Str( human.SelectCard( GetAbsSmallestCard ) ) << std::endl;
     // std::cout << "Computers's smallest card a hand: " << Card2Str( computer.SelectCard( GetAbsSmallestCard )  ) << std::endl;
 
     return 0;
