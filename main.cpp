@@ -292,6 +292,8 @@ void CoutDeck( Deck const& d, bool ordered = false, PreCard&& pre = std::move( e
  private:
      friend
          void CoutPlayerHand( Player const& );
+     friend
+         DTA::CardType G_GRAB_SMALLEST_CARD( Player& player );
 
  public:
      Player()
@@ -349,17 +351,23 @@ void CoutDeck( Deck const& d, bool ordered = false, PreCard&& pre = std::move( e
          return card;
      }
 
-     template< typename F >
-     DTA::ContainerType GrabCards( F&& f )
+     DTA::CardType GrabCard( DTA::CardType card )
      {
-         auto const cards = SelectCards( std::forward< F >( f ) );
-         for( auto const& card : cards )
-         {
-             RemoveCardImpl( card );
-         }
-     
-         return cards;
+         RemoveCardImpl( card );
+         return card;
      }
+
+     //template< typename F >
+     //DTA::ContainerType GrabCards( F&& f )
+     //{
+     //    auto const cards = SelectCards( std::forward< F >( f ) );
+     //    for( auto const& card : cards )
+     //    {
+     //        RemoveCardImpl( card );
+     //    }
+     //
+     //    return cards;
+     //}
 
     void SetHand( DTA::ContainerType&& hand )
     {
@@ -424,8 +432,7 @@ struct GameInfo
     Player::ID DEFENDER_ID = Player::ID::Invalid;
 
     DTA::ContainerType DECK;
-    DTA::ContainerType ATTACKERS;
-    DTA::ContainerType DEFENDERS;
+    std::vector< ADPair > WASTE;
 
     std::map< Player::ID, Player > PLAYERS;
 
@@ -448,13 +455,25 @@ DTA::CardType::SuitType G_GET_TRUMP()
 
 DTA::CardType G_INVALID_CARD() { return { Value::Invalid, Suit::Invalid }; }
 
-DTA::CardType GetAbsSmallestCard( DTA::ContainerType const& ); 
-DTA::CardType G_GRAB_COMPUTER_SMALLEST_CARD() 
-{ 
-    return G_GET_COMPUTER()->GrabCard( GetAbsSmallestCard );
+DTA::CardType GetAbsSmallestCard( DTA::ContainerType const& );
+
+template< typename DeckType >
+DTA::CardType G_GRAB_SMALLEST_CARD( DeckType&& deck )
+{
+    if( deck.size() )
+    {
+        auto smallest = GetAbsSmallestCard( deck );
+        deck.erase( std::remove( deck.begin(), deck.end(), smallest ), deck.end() );
+        return smallest;
+    }
+
+    return G_INVALID_CARD();
 }
 
-DTA::CardType G_GRAB_SMALLEST_CARD();
+DTA::CardType G_GRAB_SMALLEST_CARD( Player& player )
+{
+    return G_GRAB_SMALLEST_CARD( player.hand_ );
+}
 
 //void Attack();
 //void G_TURN_TRANSITION()
@@ -711,60 +730,91 @@ void ___ASSERT_ATT_DEF_INVARIANT___()
 // // // // // // // // // // // // // 
 DTA::CardType Defend( DTA::CardType );
 
+using CT = DTA::CardType;
+DTA::CardType ComputerAttackImpl( DTA::ContainerType& attackers, DTA::ContainerType& defenders, bool init = false );
 DTA::CardType ComputerAttack( DTA::CardType attacker )
 {
-    using CT = DTA::CardType;
     std::cout << "Computer attacks with: " << Card2Str( attacker ) << std::endl;  
     
     std::vector< CT > attackers;
-    attackers.push_back( attacker );
-    attacker = G_INVALID_CARD();
-
-    std::vector< CT > defenders;
-    CT defender = Defend( attacker );
-    while( IsValid( defender ) )
+    attackers.push_back( attacker ); attacker = G_INVALID_CARD();        
+    if( CT defender = Defend( attacker ); IsValid( defender ) )
     {
-        defenders.push_back( defender );
-        defender = G_INVALID_CARD();
+        std::vector< CT > defenders;
+        defenders.push_back( defender ); defender = G_INVALID_CARD();
 
-        __ASSERT_MSG__( attackers.size() == defenders.size(), 
-            "ComputerAttack:: DIFFERENT ATTACKERS AND DEFENDERS SIZES" );
-
-        __ASSERT_MSG__( attackers.size() == 1,
-            "ComputerAttack:: SOMETHING WRONG WITH SIZES, SIZES SHOULBE BE 1" );
-
-        __ASSERT_MSG__( IsValid( attacker ) || IsValid( defender ), 
+        __ASSERT_MSG__( IsValid( attacker ) || IsValid( defender ),
             "ComputerAttack:: DEINIT LOCAL STORAGE VALUES AFTER PUSHING TO THE VECTORS" );
 
-        auto intersector = [ &attackers, &defenders ]( CT const& card )
-        {
-            for( CT const& c : attackers )
-            {
-                if ( c.GetValue() == card.GetValue() )
-                    return true;                        
-            }
-
-            for( CT const& c : defenders )
-            {
-                if ( c.GetValue() == card.GetValue() )
-                    return true;
-            }
-
-            return false;
-        };
-        auto intersections = G_GET_COMPUTER()->GrabCards( intersector );
-
-        // card is beaten, no cards to add
-        if( intersections.empty() )
-        {
-            return G_INVALID_CARD();
-        }
-
-        
+        return ComputerAttackImpl( attackers, defenders, true );
     }
 
     return G_INVALID_CARD();
 }
+ 
+DTA::CardType ComputerLookingForInterSection( DTA::ContainerType& attackers, DTA::ContainerType& defenders );
+DTA::CardType ComputerLookingForDefender( DTA::ContainerType& attackers, DTA::ContainerType& defenders );
+DTA::CardType ComputerAttackImpl( DTA::ContainerType& attackers, DTA::ContainerType& defenders, bool init )
+{
+    if( init )
+        __ASSERT_MSG__( attackers.size() == defenders.size(),
+        "ComputerAttackImpl INIT:: DIFFERENT ATTACKERS AND DEFENDERS SIZES" );
+
+    if( init )
+    __ASSERT_MSG__( attackers.size() == 1,
+        "ComputerAttackImpl INIT:: SOMETHING WRONG WITH SIZES, SIZES SHOULBE BE 1" );
+
+    //   //   //   //   //   //
+    if( attackers.size() == defenders.size() )
+    {
+        auto intersect = ComputerLookingForInterSection( attackers, defenders );
+        if( IsValid( intersect ) )
+        {
+            attackers.emplace_back( std::move( intersect ) ); intersect = G_INVALID_CARD();
+            return ComputerAttackImpl( attackers, defenders );
+        }
+    }
+
+
+    auto intersector = [&attackers, &defenders]( CT const& card )
+    {
+        for( CT const& c : attackers )
+        {
+            if( c.GetValue() == card.GetValue() )
+                return true;
+        }
+
+        for( CT const& c : defenders )
+        {
+            if( c.GetValue() == card.GetValue() )
+                return true;
+        }
+
+        return false;
+    };
+    auto smallestCard = G_GRAB_SMALLEST_CARD( G_GET_COMPUTER()->SelectCards( intersector ) );
+    auto intersection = G_GET_COMPUTER()->GrabCard( smallestCard );
+
+    // card is beaten, no cards to add
+    if( IsValid( intersection ) == false )
+    {
+        __ASSERT_MSG__( attackers.size() == defenders.size(),
+            "ComputerAttackImpl ADDING TO THE WASTE:: DIFFERENT ATTACKERS AND DEFENDERS SIZES" );
+
+        for( std::size_t i = 0u; i < attackers.size(); ++i )
+        {
+            G_GAME_INFO.WASTE.emplace_back( attackers[ i ], defenders[ i ] );
+        }
+        attackers.clear();
+        defenders.clear();
+
+        return G_INVALID_CARD();
+    }
+
+    attackers.emplace_back( std::move( intersection ) );
+    return G_INVALID_CARD();
+}
+
 
 void HumanAttack()
 {
@@ -773,8 +823,7 @@ void HumanAttack()
 }
 
 void Attack()
-{
-    
+{   
     if( auto attackerID = std::addressof( G_GAME_INFO.PLAYERS[ G_GAME_INFO.ATTACKER_ID ] )->GetID(); 
         attackerID == Player::ID::Human )
     {
@@ -782,7 +831,7 @@ void Attack()
     }
     else
     {
-        ComputerAttack( G_GRAB_COMPUTER_SMALLEST_CARD() );
+        ComputerAttack( G_GRAB_SMALLEST_CARD( *G_GET_COMPUTER() ) );
     }
 }
 
@@ -797,63 +846,65 @@ DTA::CardType ComputerDefend( DTA::CardType card )
 // rework
 DTA::CardType HumanDefend( DTA::CardType attacker )
 {
-    std::cout << "\n\tHuman defends from: " << Card2Str( attacker ) << std::endl;
-    Player& human = *G_GET_HUMAN();
-    const auto selector = [attacker]( DTA::CardType const& c )
-    {
-        if( c.GetSuit() == attacker.GetSuit() )
-        {
-            return c.GetValue() > attacker.GetValue();
-        }
+    /*
+    //std::cout << "\n\tHuman defends from: " << Card2Str( attacker ) << std::endl;
+    //Player& human = *G_GET_HUMAN();
+    //const auto selector = [attacker]( DTA::CardType const& c )
+    //{
+    //    if( c.GetSuit() == attacker.GetSuit() )
+    //    {
+    //        return c.GetValue() > attacker.GetValue();
+    //    }
 
-        if( c.GetSuit() == G_GET_TRUMP() )
-        {
-            return true;
-        }
+    //    if( c.GetSuit() == G_GET_TRUMP() )
+    //    {
+    //        return true;
+    //    }
 
-        return false;
-    };
+    //    return false;
+    //};
 
-    std::cout << "\tHuman hand: " << std::endl;
-    auto preTab = []( std::ostream& os ) -> std::ostream&
-    {
-        return os << "\t";
-    };
-    CoutDeck( human.SelectCards( []( DTA::CardType const& ) { return true; } ), false, preTab );
+    //std::cout << "\tHuman hand: " << std::endl;
+    //auto preTab = []( std::ostream& os ) -> std::ostream&
+    //{
+    //    return os << "\t";
+    //};
+    //CoutDeck( human.SelectCards( []( DTA::CardType const& ) { return true; } ), false, preTab );
 
-    if( auto defenderCandidats = human.SelectCards( selector ); defenderCandidats.empty() == false )
-    {
-        std::cout << "\tHuman can beat attacker with following card(s):" << std::endl;
-        std::size_t counter = 0u;
-        auto numOut = [&counter]( std::ostream& os ) -> std::ostream&
-        {
-            return os << " [" << counter++ << "]";
-        };
+    //if( auto defenderCandidats = human.SelectCards( selector ); defenderCandidats.empty() == false )
+    //{
+    //    std::cout << "\tHuman can beat attacker with following card(s):" << std::endl;
+    //    std::size_t counter = 0u;
+    //    auto numOut = [&counter]( std::ostream& os ) -> std::ostream&
+    //    {
+    //        return os << " [" << counter++ << "]";
+    //    };
 
-        CoutDeck( defenderCandidats, false, preTab, numOut );
+    //    CoutDeck( defenderCandidats, false, preTab, numOut );
 
-        std::size_t total = counter - 1;
-        std::size_t number = total + 1;
-        while( number > total )
-        {
-            std::cout << "Enter number between[ 0 : " << total << " ]" << std::endl;
-            std::cin >> number;
-        }
+    //    std::size_t total = counter - 1;
+    //    std::size_t number = total + 1;
+    //    while( number > total )
+    //    {
+    //        std::cout << "Enter number between[ 0 : " << total << " ]" << std::endl;
+    //        std::cin >> number;
+    //    }
 
-        assert( ("SELECTED CARD INDEX IS BIGGER THEN DEFENDERS VECTOR SIZE", number < defenderCandidats.size()) );
-        auto defender = defenderCandidats[ number ];
-        //human.RemoveCard( defender ); // use human.GrabCard instead ( reword this code ) 
+    //    assert( ("SELECTED CARD INDEX IS BIGGER THEN DEFENDERS VECTOR SIZE", number < defenderCandidats.size()) );
+    //    auto defender = defenderCandidats[ number ];
+    //    //human.RemoveCard( defender ); // use human.GrabCard instead ( reword this code ) 
 
-        std::cout << "Human beated " << Card2Str( attacker ) << " with his " << Card2Str( defender ) << std::endl;
+    //    std::cout << "Human beated " << Card2Str( attacker ) << " with his " << Card2Str( defender ) << std::endl;
 
-        return defender;
-    }
-    else
-    {
-        std::cout << "\tHuman can't beat attacker! " << Card2Str( attacker ) << " added to Human hand." << std::endl;
-        G_GET_HUMAN()->AddCard( attacker );
-        return G_INVALID_CARD();
-    }
+    //    return defender;
+    //}
+    //else
+    //{
+    //    std::cout << "\tHuman can't beat attacker! " << Card2Str( attacker ) << " added to Human hand." << std::endl;
+    //    G_GET_HUMAN()->AddCard( attacker );
+    //    return G_INVALID_CARD();
+    //}
+    */
 
     return G_INVALID_CARD();
 }
@@ -892,6 +943,8 @@ void MakeTurn()
 
 bool G__INITIALIZATION()
 {
+    G_GAME_INFO.WASTE.clear();
+
     std::cout << "We've created G_GAME_INFO. G_GAME_INFO.PLAYERS inited" << std::endl;
     auto& deck = G_GAME_INFO.DECK;
 
