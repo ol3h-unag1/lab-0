@@ -731,7 +731,7 @@ void ___ASSERT_ATT_DEF_INVARIANT___()
 DTA::CardType Defend( DTA::CardType );
 
 using CT = DTA::CardType;
-DTA::CardType ComputerAttackImpl( DTA::ContainerType& attackers, DTA::ContainerType& defenders, bool init = false );
+void ComputerAttackImpl( DTA::ContainerType& attackers, DTA::ContainerType& defenders, bool init = false );
 DTA::CardType ComputerAttack( DTA::CardType attacker )
 {
     std::cout << "Computer attacks with: " << Card2Str( attacker ) << std::endl;  
@@ -778,6 +778,8 @@ DTA::CardType ComputerLookingForInterSection( DTA::ContainerType& attackers, DTA
 
     auto smallestCard = G_GRAB_SMALLEST_CARD( G_GET_COMPUTER()->SelectCards( intersector ) );
     auto intersection = G_GET_COMPUTER()->GrabCard( smallestCard );
+    
+    return intersection;
 }
 
 DTA::CardType ComputerLookingForDefender( DTA::ContainerType& attackers, DTA::ContainerType& defenders )
@@ -785,13 +787,13 @@ DTA::CardType ComputerLookingForDefender( DTA::ContainerType& attackers, DTA::Co
     if( auto defender = Defend( attackers.back() ); IsValid( defender ) )
     {
         defenders.push_back( defender );
-        return ComputerAttackImpl( attackers, defenders );
+        return defender;
     }
 
     return G_INVALID_CARD();
 }
 
-DTA::CardType ComputerAttackImpl( DTA::ContainerType& attackers, DTA::ContainerType& defenders, bool init )
+void ComputerAttackImpl( DTA::ContainerType& attackers, DTA::ContainerType& defenders, bool init )
 {
     if( init )
         __ASSERT_MSG__( attackers.size() == defenders.size(),
@@ -810,7 +812,7 @@ DTA::CardType ComputerAttackImpl( DTA::ContainerType& attackers, DTA::ContainerT
         if( IsValid( intersect ) )
         {
             attackers.emplace_back( std::move( intersect ) ); intersect = G_INVALID_CARD();
-            return ComputerAttackImpl( attackers, defenders );
+            ComputerAttackImpl( attackers, defenders );
         }
         else
         {
@@ -824,21 +826,23 @@ DTA::CardType ComputerAttackImpl( DTA::ContainerType& attackers, DTA::ContainerT
             attackers.clear();
             defenders.clear();
 
-            return G_INVALID_CARD();
+            G__ENDTURN()
         }          
     }
     // looking for defender branch
     else if( attackers.size() - defenders.size() == 1 )
     {
-        return ComputerLookingForDefender( attackers, defenders );
+        if( auto defender = ComputerLookingForDefender( attackers, defenders ); IsValid( defender ) )
+        {
+            defenders.push_back( defender );
+        }
+        ComputerAttackImpl( attackers, defenders );
     }
     else
     {
         __ASSERT_MSG__( false,
             "ComputerAttackImpl SOMETHING WRONG WITH SIZES, SIZES SHOULD DIFFER IN 1" );
     }
-
-    return G_INVALID_CARD();
 }
 
 // // // // // // // // // // // // // 
@@ -1025,6 +1029,17 @@ bool G__INITIALIZATION()
     std::cout << Suit2Str( G_GAME_INFO.TRUMP ) << std::endl << std::endl;
 
     return SetAttackerDefenderRoles( human, computer );
+}
+
+void G__ENDTURN()
+{
+    std::cout << "Next turn" << std::endl;
+
+    if( true )
+        return;
+
+    std::swap( G_GAME_INFO.ATTACKER_ID, G_GAME_INFO.DEFENDER_ID );
+    Attack();
 }
 
 int main()
