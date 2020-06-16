@@ -29,6 +29,9 @@ namespace MySetup
 
 std::size_t const C_DEFAULT_HANDSIZE = 6;
 
+class Player;
+void G__ENDTURN( bool swap, std::vector< Player* > needCards );
+
 // // // // // // // // // // // // // 
 
 template< typename Value, typename Suit >
@@ -475,13 +478,6 @@ DTA::CardType G_GRAB_SMALLEST_CARD( Player& player )
     return G_GRAB_SMALLEST_CARD( player.hand_ );
 }
 
-//void Attack();
-//void G_TURN_TRANSITION()
-//{
-//    std::swap( G_GAME_INFO.ATTACKER_ID, G_GAME_INFO.DEFENDER_ID );
-//    Attack();
-//}
-
 template< typename T >
 bool IsValid( T t )
 {
@@ -732,7 +728,7 @@ DTA::CardType Defend( DTA::CardType );
 
 using CT = DTA::CardType;
 void ComputerAttackImpl( DTA::ContainerType& attackers, DTA::ContainerType& defenders, bool init = false );
-DTA::CardType ComputerAttack( DTA::CardType attacker )
+void ComputerAttack( DTA::CardType attacker )
 {
     std::cout << "Computer attacks with: " << Card2Str( attacker ) << std::endl;  
     
@@ -747,11 +743,7 @@ DTA::CardType ComputerAttack( DTA::CardType attacker )
             "ComputerAttack:: DEINIT LOCAL STORAGE VALUES AFTER PUSHING TO THE VECTORS" );
 
         ComputerAttackImpl( attackers, defenders, true );
-
-        // Trigger Adding carts to the hand
     }
-
-    return G_INVALID_CARD();
 }
  
 //////////////////////////////////////////
@@ -826,17 +818,22 @@ void ComputerAttackImpl( DTA::ContainerType& attackers, DTA::ContainerType& defe
             attackers.clear();
             defenders.clear();
 
-            G__ENDTURN()
+            G__ENDTURN( true, std::vector< Player* >{ G_GET_COMPUTER(), G_GET_HUMAN() }  ); // Human won
         }          
     }
     // looking for defender branch
     else if( attackers.size() - defenders.size() == 1 )
     {
-        if( auto defender = ComputerLookingForDefender( attackers, defenders ); IsValid( defender ) )
+        auto defender = ComputerLookingForDefender( attackers, defenders );
+        if( IsValid( defender ) )
         {
             defenders.push_back( defender );
+            ComputerAttackImpl( attackers, defenders );
         }
-        ComputerAttackImpl( attackers, defenders );
+        else
+        {
+            G__ENDTURN( false, std::vector< Player* >{ G_GET_COMPUTER() } ); // Computer won
+        }
     }
     else
     {
@@ -1031,15 +1028,44 @@ bool G__INITIALIZATION()
     return SetAttackerDefenderRoles( human, computer );
 }
 
-void G__ENDTURN()
+void G__ENDTURN( bool swap, std::vector< Player* > needCards )
 {
     std::cout << "Next turn" << std::endl;
 
     if( true )
         return;
 
-    std::swap( G_GAME_INFO.ATTACKER_ID, G_GAME_INFO.DEFENDER_ID );
-    Attack();
+    if ( swap )
+        std::swap( G_GAME_INFO.ATTACKER_ID, G_GAME_INFO.DEFENDER_ID );
+
+    if( needCards.empty() )
+        __ASSERT_MSG__( false, "No players need cards" );
+
+    for( auto player : needCards )
+    {
+        auto& deck = G_GAME_INFO.DECK;
+        while( deck.size() && player->HandSize() < C_DEFAULT_HANDSIZE )
+        {
+            auto card = deck.back(); deck.pop_back();
+            player->AddCard( card );
+        }
+    }
+    
+    __ASSERT_MSG__( !G_GET_HUMAN()->HandSize() || !G_GET_COMPUTER()->HandSize() , "EMPTY HANDS BOTH PLAYERS" );
+
+    if( 0 == G_GET_HUMAN()->HandSize() )
+    {
+        std::cout << "Human won!" << std::endl;
+    }
+    else if( 0 == G_GET_COMPUTER()->HandSize() )
+    {
+        std::cout << "Computer won!" << std::endl;
+    }
+    else
+    {
+        Attack();
+    }
+ 
 }
 
 int main()
