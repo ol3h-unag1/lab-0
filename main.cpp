@@ -30,7 +30,7 @@ namespace MySetup
 std::size_t const C_DEFAULT_HANDSIZE = 6;
 
 class Player;
-void G__ENDTURN( bool swap, std::vector< Player* > needCards );
+void G__ENDTURN( bool swap );
 
 // // // // // // // // // // // // // 
 
@@ -369,35 +369,32 @@ void CoutDeck( Deck const& d, bool ordered = false, PreCard&& pre = std::move( e
          return card;
      }
 
-     //template< typename F >
-     //DTA::ContainerType GrabCards( F&& f )
-     //{
-     //    auto const cards = SelectCards( std::forward< F >( f ) );
-     //    for( auto const& card : cards )
-     //    {
-     //        RemoveCardImpl( card );
-     //    }
-     //
-     //    return cards;
-     //}
+     void SetHand( DTA::ContainerType&& hand )
+     {
+         if( hand_.empty() )
+         {
+             hand_ = std::move( hand );
+         }
+         else
+         {
+             __ASSERT_MSG__( false, "HAND IS NOT EMPTY" );
+         }
 
-    void SetHand( DTA::ContainerType&& hand )
-    {
-        hand_ = std::move( hand );
-    }
+         SortIml();
+     }
 
-    std::size_t HandSize() const { return hand_.size(); }
+     std::size_t HandSize() const { return hand_.size(); }
 
-    DTA::CardType operator[]( std::size_t i )
-    {
-        if( i < hand_.size() )
-        {
-            return hand_[ i ];
-        }
+     DTA::CardType operator[]( std::size_t i )
+     {
+         if( i < hand_.size() )
+         {
+             return hand_[ i ];
+         }
 
-        return G_INVALID_CARD();
-    }
-    
+         return G_INVALID_CARD();
+     }
+
 private:
     void RemoveCardImpl( DTA::CardType card )
     {
@@ -676,7 +673,7 @@ bool IsBigger( DTA::CardType biggerThenMe, DTA::CardType tested )
     DTA::ContainerType deck{ biggerThenMe, tested };
     auto small = GetAbsSmallestCard( deck );
 
-    if( biggerThenMe == tested || small == tested )
+    if( biggerThenMe == tested || small == biggerThenMe )
     {
         false;
     }
@@ -791,30 +788,17 @@ void ___ASSERT_ATT_DEF_INVARIANT___()
 
 // ATTACKING IMPL
 
-DTA::CardType Defend( DTA::CardType );
-
 using CT = DTA::CardType;
-void AttackPrivateImpl( DTA::ContainerType& attackers, DTA::ContainerType& defenders, bool init = false );
+
+DTA::CardType Defend( DTA::CardType );
+void AttackImpl( DTA::CardType attacker );
+
 void ComputerAttack()
 {  
-    std::vector< CT > attackers{ G_GRAB_SMALLEST_CARD( *G_GET_COMPUTER() ) };
-    std::cout << "\nComputer attacks with: " << Card2Str( attackers.front() ) << std::endl;
-
-    if( CT defender = Defend( attackers.front() ); IsValid( defender ) )
-    {
-        std::vector< CT > defenders;
-        defenders.push_back( defender ); defender = G_INVALID_CARD();
-
-        __ASSERT_MSG__( IsValid( attackers.front() ) || IsValid( defender ),
-            "ComputerAttack:: DEINIT LOCAL STORAGE VALUES AFTER PUSHING TO THE VECTORS" );
-
-        AttackPrivateImpl( attackers, defenders, true );
-    }
+    __COUT_FUNC_TRACE__( "" );
+    AttackImpl( G_GRAB_SMALLEST_CARD( *G_GET_COMPUTER() ) );
 }
  
-//////////////////////////////////////////
-//// COMPUTER ATTACK IMPL
-// // // // // // // // // // // // // 
 DTA::CardType ComputerLookingForInterSection( DTA::ContainerType& attackers, DTA::ContainerType& defenders )
 {
     auto intersector = [&attackers, &defenders]( CT const& card )
@@ -851,21 +835,37 @@ DTA::CardType ComputerLookingForDefender( DTA::ContainerType& attackers, DTA::Co
     return G_INVALID_CARD();
 }
 
+void AttackPrivateImpl( DTA::ContainerType& attackers, DTA::ContainerType& defenders, bool init = false );
 void AttackImpl( DTA::CardType attacker )
 {
+    __COUT_FUNC_TRACE__( Card2Str( attacker) );
+    std::cout << "\n" << PlayerID2Str( G_GET_ATTACKER()->GetID() ) << " attacks with: " << Card2Str( attacker ) << std::endl;
     
-    //
+    std::vector< CT > attackers{ attacker };
+    if( CT defender = Defend( attackers.front() ); IsValid( defender ) )
+    {
+        std::vector< CT > defenders;
+        defenders.push_back( defender );
+        AttackPrivateImpl( attackers, defenders, true );
+    }
 }
 
 void AttackPrivateImpl( DTA::ContainerType& attackers, DTA::ContainerType& defenders, bool init )
 {
+    std::string msg = std::string( " init = " ) += std::string( init ? "true" : "false" );
+    __COUT_FUNC_TRACE__( msg );
+    std::cout << "attakers:" << std::endl;
+    CoutDeck( attackers );
+    std::cout << "\ndefender:" << std::endl;
+    CoutDeck( defenders );
+
     if( init )
         __ASSERT_MSG__( attackers.size() == defenders.size(),
-        "AttackImpl INIT:: DIFFERENT ATTACKERS AND DEFENDERS SIZES" );
+        "AttackPrivateImpl INIT:: DIFFERENT ATTACKERS AND DEFENDERS SIZES" );
 
     if( init )
     __ASSERT_MSG__( attackers.size() == 1,
-        "AttackImpl INIT:: SOMETHING WRONG WITH SIZES, SIZES SHOULBE BE 1" );
+        "AttackPrivateImpl INIT:: SOMETHING WRONG WITH SIZES, SIZES SHOULBE BE 1" );
 
     //   //   //   //   //   //
 
@@ -916,35 +916,30 @@ void AttackPrivateImpl( DTA::ContainerType& attackers, DTA::ContainerType& defen
 
 void HumanAttack()
 {
-    std::cout << "\nHuman attacks! Human can attack with these cards:  " << std::endl;
+    __COUT_FUNC_TRACE__( "" );
+
+    std::cout << "\nHuman can attack with these cards:  " << std::endl;
 
     auto& human = *G_GET_HUMAN();
     CoutPlayerHand( human, true );
 
-    std::size_t number = 0u;
+    std::size_t number = human.HandSize();
+    std::cin >> number;
     while( !std::cin || number >= human.HandSize() )
     {
         std::cout << "Wronk!!" << std::endl;
         std::cout << "Select number between 0 and " << human.HandSize() << std::endl;
     }
 
-    std::vector< CT > attackers{ human.GrabCard( human[ number ] ) };
-    std::cout << "\nHuman attacks with: " << Card2Str( attackers.front() ) << std::endl;
+    // // // // // // // //
 
-    if( CT defender = Defend( attackers.front() ); IsValid( defender ) )
-    {
-        std::vector< CT > defenders;
-        defenders.push_back( defender ); defender = G_INVALID_CARD();
-
-        __ASSERT_MSG__( IsValid( attackers.front() ) || IsValid( defender ),
-            "ComputerAttack:: DEINIT LOCAL STORAGE VALUES AFTER PUSHING TO THE VECTORS" );
-
-        AttackPrivateImpl( attackers, defenders, true );
-    }
+    AttackImpl( human.GrabCard( human[ number ] ) ) ;
 }
 
 void Attack()
-{   
+{
+    __COUT_FUNC_TRACE__("");
+
     if( G_GET_ATTACKER() == G_GET_HUMAN() )
     {
         HumanAttack();
@@ -959,7 +954,7 @@ void Attack()
 
 // DEFENDING IMPL
 template< typename Functor >
-DTA::CardType Defend( DTA::CardType attacker, Functor&& choicer )
+DTA::CardType ChooseDefender( DTA::CardType attacker, Functor&& choicer )
 {
     auto& defenderPlayer = G_GAME_INFO.PLAYERS[ G_GAME_INFO.DEFENDER_ID ];
     auto bigger = [&attacker]( DTA::CardType card )
@@ -979,6 +974,8 @@ DTA::CardType Defend( DTA::CardType attacker, Functor&& choicer )
 
 DTA::CardType ComputerDefend( DTA::CardType attacker )
 {
+    __ASSERT_MSG__( G_GET_ATTACKER() == G_GET_HUMAN() && G_GET_DEFENDER == G_GET_COMPUTER(), "ATTACKER / DEFENDER MISMATCH " );
+
     auto computerChoicer = []( DTA::ContainerType const& candidates )
     {
         CoutPlayerHand( *G_GET_COMPUTER(), true );
@@ -989,7 +986,7 @@ DTA::CardType ComputerDefend( DTA::CardType attacker )
         return smallest;
     };
 
-    return Defend( attacker, computerChoicer );
+    return ChooseDefender( attacker, computerChoicer );
 }
 
 DTA::CardType HumanDefend( DTA::CardType attacker )
@@ -998,7 +995,7 @@ DTA::CardType HumanDefend( DTA::CardType attacker )
     {
         CoutPlayerHand( *G_GET_HUMAN(), true );
 
-        std::size_t number = 0u;
+        std::size_t number = candidates.size();
         std::cin >> number;
         while( !std::cin || number >= candidates.size() )
         {
@@ -1012,17 +1009,21 @@ DTA::CardType HumanDefend( DTA::CardType attacker )
         return candidates[ number ];
     };
 
-    return Defend( attacker, humanChoicer );
+    return ChooseDefender( attacker, humanChoicer );
 }
 
 DTA::CardType Defend( DTA::CardType attacker )
 {
     ___ASSERT_ATT_DEF_INVARIANT___();
+    __COUT_FUNC_TRACE__( "" );
 
-    switch( std::addressof( G_GAME_INFO.PLAYERS[ G_GAME_INFO.DEFENDER_ID ] )->GetID() )
+    if ( G_GET_ATTACKER() == G_GET_HUMAN() )
     {
-    case Player::ID::Human: return HumanDefend( attacker );
-    case Player::ID::Computer: return ComputerDefend( attacker );
+        return ComputerDefend( attacker );
+    }
+    else
+    {
+        return HumanDefend( attacker );
     }
 
     return G_INVALID_CARD();
@@ -1033,9 +1034,9 @@ DTA::CardType Defend( DTA::CardType attacker )
 void MakeTurn()
 {
     ___ASSERT_ATT_DEF_INVARIANT___();
-    if( auto* attacker = std::addressof( G_GAME_INFO.PLAYERS[ G_GAME_INFO.ATTACKER_ID ] ) )
+    if( G_GET_ATTACKER() )
     {
-        std::string const msg = "Attacker is: " + PlayerID2Str( attacker->GetID() );
+        std::string const msg = "Attacker is: " + PlayerID2Str( G_GET_ATTACKER()->GetID() );
         __COUT_FUNC_TRACE__( msg );
         Attack();
     }
@@ -1121,7 +1122,6 @@ void G__ENDTURN( bool swap )
         std::swap( G_GAME_INFO.ATTACKER_ID, G_GAME_INFO.DEFENDER_ID );
     }
 
-    std::vector< Player* > needCards;
     for( auto player : needCards )
     {
         auto& deck = G_GAME_INFO.DECK;
