@@ -281,6 +281,7 @@ void CoutDeck( Deck const& d, bool ordered = false, PreCard&& pre = std::move( e
  }
 
 // // // // // // // // // // // // // 
+ DTA::CardType G_INVALID_CARD();
 
  /// <summary>
 /// PLAYER CLASS
@@ -301,7 +302,8 @@ void CoutDeck( Deck const& d, bool ordered = false, PreCard&& pre = std::move( e
 
  private:
      friend
-         void CoutPlayerHand( Player const& );
+         void CoutPlayerHand( Player const&, bool );
+
      friend
          DTA::CardType G_GRAB_SMALLEST_CARD( Player& player );
 
@@ -385,6 +387,16 @@ void CoutDeck( Deck const& d, bool ordered = false, PreCard&& pre = std::move( e
     }
 
     std::size_t HandSize() const { return hand_.size(); }
+
+    DTA::CardType operator[]( std::size_t i )
+    {
+        if( i < hand_.size() )
+        {
+            return hand_[ i ];
+        }
+
+        return G_INVALID_CARD();
+    }
     
 private:
     void RemoveCardImpl( DTA::CardType card )
@@ -418,9 +430,30 @@ std::string PlayerID2Str( Player::ID pk )
     return "";
 }
 
-void CoutPlayerHand( Player const& p )
+void CoutPlayerHandNumered( DTA::ContainerType const& deck )
 {
-    CoutDeck( p.hand_, false );
+    auto preTab = []( std::ostream& os ) -> std::ostream&
+    {
+        return os << "\t";
+    };
+    std::size_t counter = 0u;
+    auto numOut = [&counter]( std::ostream& os ) -> std::ostream&
+    {
+        return os << " [" << counter++ << "]";
+    };
+    CoutDeck( deck, false, preTab, numOut );
+}
+
+void CoutPlayerHand( Player const& p, bool numered = false )
+{
+    if( numered )
+    {
+        CoutPlayerHandNumered( p.hand_ );
+    }
+    else
+    {
+        CoutDeck( p.hand_ );
+    }
 }
 
 // // // // // // // // // // // // // 
@@ -483,6 +516,16 @@ DTA::CardType G_GRAB_SMALLEST_CARD( DeckType&& deck )
 DTA::CardType G_GRAB_SMALLEST_CARD( Player& player )
 {
     return G_GRAB_SMALLEST_CARD( player.hand_ );
+}
+
+Player* G_GET_ATTACKER()
+{
+    return std::addressof( G_GAME_INFO.PLAYERS[ G_GAME_INFO.ATTACKER_ID ] );
+}
+
+Player* G_GET_DEFENDER()
+{
+    return std::addressof( G_GAME_INFO.PLAYERS[ G_GAME_INFO.DEFENDER_ID ] );
 }
 
 template< typename T >
@@ -745,14 +788,17 @@ void ___ASSERT_ATT_DEF_INVARIANT___()
 }
 
 // // // // // // // // // // // // // 
+
+// ATTACKING IMPL
+
 DTA::CardType Defend( DTA::CardType );
 
 using CT = DTA::CardType;
-void ComputerAttackImpl( DTA::ContainerType& attackers, DTA::ContainerType& defenders, bool init = false );
+void AttackPrivateImpl( DTA::ContainerType& attackers, DTA::ContainerType& defenders, bool init = false );
 void ComputerAttack()
 {  
     std::vector< CT > attackers{ G_GRAB_SMALLEST_CARD( *G_GET_COMPUTER() ) };
-    std::cout << "Computer attacks with: " << Card2Str( attackers.front() ) << std::endl;
+    std::cout << "\nComputer attacks with: " << Card2Str( attackers.front() ) << std::endl;
 
     if( CT defender = Defend( attackers.front() ); IsValid( defender ) )
     {
@@ -762,7 +808,7 @@ void ComputerAttack()
         __ASSERT_MSG__( IsValid( attackers.front() ) || IsValid( defender ),
             "ComputerAttack:: DEINIT LOCAL STORAGE VALUES AFTER PUSHING TO THE VECTORS" );
 
-        ComputerAttackImpl( attackers, defenders, true );
+        AttackPrivateImpl( attackers, defenders, true );
     }
 }
  
@@ -805,15 +851,21 @@ DTA::CardType ComputerLookingForDefender( DTA::ContainerType& attackers, DTA::Co
     return G_INVALID_CARD();
 }
 
-void ComputerAttackImpl( DTA::ContainerType& attackers, DTA::ContainerType& defenders, bool init )
+void AttackImpl( DTA::CardType attacker )
+{
+    
+    //
+}
+
+void AttackPrivateImpl( DTA::ContainerType& attackers, DTA::ContainerType& defenders, bool init )
 {
     if( init )
         __ASSERT_MSG__( attackers.size() == defenders.size(),
-        "ComputerAttackImpl INIT:: DIFFERENT ATTACKERS AND DEFENDERS SIZES" );
+        "AttackImpl INIT:: DIFFERENT ATTACKERS AND DEFENDERS SIZES" );
 
     if( init )
     __ASSERT_MSG__( attackers.size() == 1,
-        "ComputerAttackImpl INIT:: SOMETHING WRONG WITH SIZES, SIZES SHOULBE BE 1" );
+        "AttackImpl INIT:: SOMETHING WRONG WITH SIZES, SIZES SHOULBE BE 1" );
 
     //   //   //   //   //   //
 
@@ -824,7 +876,7 @@ void ComputerAttackImpl( DTA::ContainerType& attackers, DTA::ContainerType& defe
         if( IsValid( intersect ) )
         {
             attackers.emplace_back( std::move( intersect ) ); intersect = G_INVALID_CARD();
-            ComputerAttackImpl( attackers, defenders );
+            AttackPrivateImpl( attackers, defenders );
         }
         else
         {
@@ -838,7 +890,7 @@ void ComputerAttackImpl( DTA::ContainerType& attackers, DTA::ContainerType& defe
             attackers.clear();
             defenders.clear();
 
-            G__ENDTURN( true, std::vector< Player* >{ G_GET_COMPUTER(), G_GET_HUMAN() }  ); // Human won
+            G__ENDTURN( true ); // Defender won
         }          
     }
     // looking for defender branch
@@ -848,11 +900,11 @@ void ComputerAttackImpl( DTA::ContainerType& attackers, DTA::ContainerType& defe
         if( IsValid( defender ) )
         {
             defenders.push_back( defender );
-            ComputerAttackImpl( attackers, defenders );
+            AttackPrivateImpl( attackers, defenders );
         }
         else
         {
-            G__ENDTURN( false, std::vector< Player* >{ G_GET_COMPUTER() } ); // Computer won
+            G__ENDTURN( false ); // Attacker won
         }
     }
     else
@@ -862,18 +914,38 @@ void ComputerAttackImpl( DTA::ContainerType& attackers, DTA::ContainerType& defe
     }
 }
 
-// // // // // // // // // // // // // 
-
 void HumanAttack()
 {
-    std::cout << "Human attacks! " << std::endl;
-    // Defend( card );
+    std::cout << "\nHuman attacks! Human can attack with these cards:  " << std::endl;
+
+    auto& human = *G_GET_HUMAN();
+    CoutPlayerHand( human, true );
+
+    std::size_t number = 0u;
+    while( !std::cin || number >= human.HandSize() )
+    {
+        std::cout << "Wronk!!" << std::endl;
+        std::cout << "Select number between 0 and " << human.HandSize() << std::endl;
+    }
+
+    std::vector< CT > attackers{ human.GrabCard( human[ number ] ) };
+    std::cout << "\nHuman attacks with: " << Card2Str( attackers.front() ) << std::endl;
+
+    if( CT defender = Defend( attackers.front() ); IsValid( defender ) )
+    {
+        std::vector< CT > defenders;
+        defenders.push_back( defender ); defender = G_INVALID_CARD();
+
+        __ASSERT_MSG__( IsValid( attackers.front() ) || IsValid( defender ),
+            "ComputerAttack:: DEINIT LOCAL STORAGE VALUES AFTER PUSHING TO THE VECTORS" );
+
+        AttackPrivateImpl( attackers, defenders, true );
+    }
 }
 
 void Attack()
 {   
-    if( auto attackerID = std::addressof( G_GAME_INFO.PLAYERS[ G_GAME_INFO.ATTACKER_ID ] )->GetID(); 
-        attackerID == Player::ID::Human )
+    if( G_GET_ATTACKER() == G_GET_HUMAN() )
     {
         HumanAttack();
     }
@@ -885,6 +957,7 @@ void Attack()
 
 // // // // // // // // // // // // // 
 
+// DEFENDING IMPL
 template< typename Functor >
 DTA::CardType Defend( DTA::CardType attacker, Functor&& choicer )
 {
@@ -908,17 +981,7 @@ DTA::CardType ComputerDefend( DTA::CardType attacker )
 {
     auto computerChoicer = []( DTA::ContainerType const& candidates )
     {
-        auto preTab = []( std::ostream& os ) -> std::ostream&
-        {
-            return os << "\t";
-        };
-        std::size_t counter = 0u;
-        auto numOut = [&counter]( std::ostream& os ) -> std::ostream&
-        {
-            return os << " [" << counter++ << "]";
-        };
-        std::cout << "Computer can defend with this cards: " << std::endl;
-        CoutDeck( candidates, false, preTab, numOut );
+        CoutPlayerHand( *G_GET_COMPUTER(), true );
 
         auto smallest = GetAbsSmallestCard( candidates );
         std::cout << "Computer defends with this card: " << Card2Str( smallest ) << std::endl;
@@ -927,30 +990,20 @@ DTA::CardType ComputerDefend( DTA::CardType attacker )
     };
 
     return Defend( attacker, computerChoicer );
-
 }
 
 DTA::CardType HumanDefend( DTA::CardType attacker )
 {
     auto humanChoicer = []( DTA::ContainerType const& candidates )
     {
-        auto preTab = []( std::ostream& os ) -> std::ostream&
-        {
-            return os << "\t";
-        };
-        std::size_t counter = 0u;
-        auto numOut = [&counter]( std::ostream& os ) -> std::ostream&
-        {
-            return os << " [" << counter++ << "]";
-        };
-        CoutDeck( candidates, false, preTab, numOut );
+        CoutPlayerHand( *G_GET_HUMAN(), true );
 
         std::size_t number = 0u;
         std::cin >> number;
-        while( std::cin || number >= candidates.size() )
+        while( !std::cin || number >= candidates.size() )
         {
             std::cout << "Wronk!!" << std::endl;
-            CoutDeck( candidates, false, preTab, numOut );
+            CoutPlayerHand( *G_GET_HUMAN(), true );
             std::cout << "Enter a number between 0 and " << candidates.size() - 1 << std::endl;
 
             std::cin >> number;
@@ -1053,19 +1106,22 @@ bool G__INITIALIZATION()
     return SetAttackerDefenderRoles( human, computer );
 }
 
-void G__ENDTURN( bool swap, std::vector< Player* > needCards )
+void G__ENDTURN( bool swap )
 {
     std::cout << "Next turn" << std::endl;
 
     if( true )
         return;
 
-    if ( swap )
+    std::vector< Player* > needCards{ G_GET_ATTACKER() };
+
+    if( swap )
+    {
+        needCards.push_back( G_GET_DEFENDER() );
         std::swap( G_GAME_INFO.ATTACKER_ID, G_GAME_INFO.DEFENDER_ID );
+    }
 
-    if( needCards.empty() )
-        __ASSERT_MSG__( false, "No players need cards" );
-
+    std::vector< Player* > needCards;
     for( auto player : needCards )
     {
         auto& deck = G_GAME_INFO.DECK;
@@ -1076,7 +1132,7 @@ void G__ENDTURN( bool swap, std::vector< Player* > needCards )
         }
     }
     
-    __ASSERT_MSG__( !G_GET_HUMAN()->HandSize() || !G_GET_COMPUTER()->HandSize() , "EMPTY HANDS BOTH PLAYERS" );
+    __ASSERT_MSG__( !G_GET_HUMAN()->HandSize() && !G_GET_COMPUTER()->HandSize() , "EMPTY HANDS BOTH PLAYERS" );
 
     if( 0 == G_GET_HUMAN()->HandSize() )
     {
