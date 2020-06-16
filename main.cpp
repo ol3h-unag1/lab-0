@@ -56,6 +56,13 @@ public:
         return left._hash == right._hash;
     }
 
+    template< typename TT, typename UU >
+    friend
+        bool operator!=( Card< TT, UU > const& left, Card< TT, UU > const& right )
+    {
+        return ! (left._hash == right._hash );
+    }
+
 public:
     Value GetValue() const
     {
@@ -620,6 +627,20 @@ DTA::CardType GetAbsSmallestCard( DTA::ContainerType const& d )
     return *smallest;
 }
 
+bool IsBigger( DTA::CardType biggerThenMe, DTA::CardType tested )
+{
+
+    DTA::ContainerType deck{ biggerThenMe, tested };
+    auto small = GetAbsSmallestCard( deck );
+
+    if( biggerThenMe == tested || small == tested )
+    {
+        false;
+    }
+
+    return true;
+}
+
 // // // // // // // // // // // // // 
 
 // // // // // // // // // // // // // 
@@ -933,6 +954,41 @@ DTA::CardType HumanDefend( DTA::CardType attacker )
     //    return G_INVALID_CARD();
     //}
     */
+
+    auto selector = [&attacker]( DTA::CardType card )
+    {
+        return IsBigger( attacker, card );
+    };
+
+    auto defenderCandidates = G_GET_HUMAN()->SelectCards( selector );
+    if( defenderCandidates.size() )
+    {
+        std::cout << "\n\t" << "Human can use selected cards for defense: " << std::endl;
+
+        auto preTab = []( std::ostream& os ) -> std::ostream&
+        {
+            return os << "\t";
+        };
+        std::size_t counter = 0u;
+        auto numOut = [&counter]( std::ostream& os ) -> std::ostream&
+        {
+            return os << " [" << counter++ << "]";
+        };
+        CoutDeck( defenderCandidates, false, preTab, numOut );
+
+        std::size_t number = 0u;
+        std::cin >> number;
+        while( std::cin || number >= defenderCandidates.size() )
+        {
+            std::cout << "Wronk!!" << std::endl;
+            CoutDeck( defenderCandidates, false, preTab, numOut );
+            std::cout << "Enter a number between 0 and " << defenderCandidates.size() - 1 << std::endl;
+
+            std::cin >> number;
+        }
+
+        return G_GET_HUMAN()->GrabCard( defenderCandidates[ number ] );
+    }
 
     return G_INVALID_CARD();
 }
