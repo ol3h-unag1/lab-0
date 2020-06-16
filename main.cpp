@@ -746,36 +746,19 @@ DTA::CardType ComputerAttack( DTA::CardType attacker )
         __ASSERT_MSG__( IsValid( attacker ) || IsValid( defender ),
             "ComputerAttack:: DEINIT LOCAL STORAGE VALUES AFTER PUSHING TO THE VECTORS" );
 
-        return ComputerAttackImpl( attackers, defenders, true );
+        ComputerAttackImpl( attackers, defenders, true );
+
+        // Trigger Adding carts to the hand
     }
 
     return G_INVALID_CARD();
 }
  
-DTA::CardType ComputerLookingForInterSection( DTA::ContainerType& attackers, DTA::ContainerType& defenders );
-DTA::CardType ComputerLookingForDefender( DTA::ContainerType& attackers, DTA::ContainerType& defenders );
-DTA::CardType ComputerAttackImpl( DTA::ContainerType& attackers, DTA::ContainerType& defenders, bool init )
+//////////////////////////////////////////
+//// COMPUTER ATTACK IMPL
+// // // // // // // // // // // // // 
+DTA::CardType ComputerLookingForInterSection( DTA::ContainerType& attackers, DTA::ContainerType& defenders )
 {
-    if( init )
-        __ASSERT_MSG__( attackers.size() == defenders.size(),
-        "ComputerAttackImpl INIT:: DIFFERENT ATTACKERS AND DEFENDERS SIZES" );
-
-    if( init )
-    __ASSERT_MSG__( attackers.size() == 1,
-        "ComputerAttackImpl INIT:: SOMETHING WRONG WITH SIZES, SIZES SHOULBE BE 1" );
-
-    //   //   //   //   //   //
-    if( attackers.size() == defenders.size() )
-    {
-        auto intersect = ComputerLookingForInterSection( attackers, defenders );
-        if( IsValid( intersect ) )
-        {
-            attackers.emplace_back( std::move( intersect ) ); intersect = G_INVALID_CARD();
-            return ComputerAttackImpl( attackers, defenders );
-        }
-    }
-
-
     auto intersector = [&attackers, &defenders]( CT const& card )
     {
         for( CT const& c : attackers )
@@ -792,29 +775,73 @@ DTA::CardType ComputerAttackImpl( DTA::ContainerType& attackers, DTA::ContainerT
 
         return false;
     };
+
     auto smallestCard = G_GRAB_SMALLEST_CARD( G_GET_COMPUTER()->SelectCards( intersector ) );
     auto intersection = G_GET_COMPUTER()->GrabCard( smallestCard );
+}
 
-    // card is beaten, no cards to add
-    if( IsValid( intersection ) == false )
+DTA::CardType ComputerLookingForDefender( DTA::ContainerType& attackers, DTA::ContainerType& defenders )
+{
+    if( auto defender = Defend( attackers.back() ); IsValid( defender ) )
     {
-        __ASSERT_MSG__( attackers.size() == defenders.size(),
-            "ComputerAttackImpl ADDING TO THE WASTE:: DIFFERENT ATTACKERS AND DEFENDERS SIZES" );
-
-        for( std::size_t i = 0u; i < attackers.size(); ++i )
-        {
-            G_GAME_INFO.WASTE.emplace_back( attackers[ i ], defenders[ i ] );
-        }
-        attackers.clear();
-        defenders.clear();
-
-        return G_INVALID_CARD();
+        defenders.push_back( defender );
+        return ComputerAttackImpl( attackers, defenders );
     }
 
-    attackers.emplace_back( std::move( intersection ) );
     return G_INVALID_CARD();
 }
 
+DTA::CardType ComputerAttackImpl( DTA::ContainerType& attackers, DTA::ContainerType& defenders, bool init )
+{
+    if( init )
+        __ASSERT_MSG__( attackers.size() == defenders.size(),
+        "ComputerAttackImpl INIT:: DIFFERENT ATTACKERS AND DEFENDERS SIZES" );
+
+    if( init )
+    __ASSERT_MSG__( attackers.size() == 1,
+        "ComputerAttackImpl INIT:: SOMETHING WRONG WITH SIZES, SIZES SHOULBE BE 1" );
+
+    //   //   //   //   //   //
+
+    // looking for intersection branch
+    if( attackers.size() == defenders.size() )
+    {
+        auto intersect = ComputerLookingForInterSection( attackers, defenders );
+        if( IsValid( intersect ) )
+        {
+            attackers.emplace_back( std::move( intersect ) ); intersect = G_INVALID_CARD();
+            return ComputerAttackImpl( attackers, defenders );
+        }
+        else
+        {
+            __ASSERT_MSG__( attackers.size() == defenders.size(),
+                "ComputerAttackImpl ADDING TO THE WASTE:: DIFFERENT ATTACKERS AND DEFENDERS SIZES" );
+
+            for( std::size_t i = 0u; i < attackers.size(); ++i )
+            {
+                G_GAME_INFO.WASTE.emplace_back( attackers[ i ], defenders[ i ] );
+            }
+            attackers.clear();
+            defenders.clear();
+
+            return G_INVALID_CARD();
+        }          
+    }
+    // looking for defender branch
+    else if( attackers.size() - defenders.size() == 1 )
+    {
+        return ComputerLookingForDefender( attackers, defenders );
+    }
+    else
+    {
+        __ASSERT_MSG__( false,
+            "ComputerAttackImpl SOMETHING WRONG WITH SIZES, SIZES SHOULD DIFFER IN 1" );
+    }
+
+    return G_INVALID_CARD();
+}
+
+// // // // // // // // // // // // // 
 
 void HumanAttack()
 {
