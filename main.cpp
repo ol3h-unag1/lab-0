@@ -974,7 +974,8 @@ DTA::CardType ChooseDefender( DTA::CardType attacker, Functor&& choicer )
 
 DTA::CardType ComputerDefend( DTA::CardType attacker )
 {
-    __ASSERT_MSG__( G_GET_ATTACKER() == G_GET_HUMAN() && G_GET_DEFENDER == G_GET_COMPUTER(), "ATTACKER / DEFENDER MISMATCH " );
+    __ASSERT_MSG__( G_GET_ATTACKER() == G_GET_HUMAN() && G_GET_DEFENDER == G_GET_COMPUTER(), 
+        "ComputerDefend:: ATTACKER / DEFENDER MISMATCH " );
 
     auto computerChoicer = []( DTA::ContainerType const& candidates )
     {
@@ -991,6 +992,9 @@ DTA::CardType ComputerDefend( DTA::CardType attacker )
 
 DTA::CardType HumanDefend( DTA::CardType attacker )
 {
+    __ASSERT_MSG__( G_GET_ATTACKER() == G_GET_COMPUTER() && G_GET_DEFENDER == G_GET_HUMAN(), "HumanDefend:: 
+        ATTACKER / DEFENDER MISMATCH " );
+
     auto humanChoicer = []( DTA::ContainerType const& candidates )
     {
         CoutPlayerHand( *G_GET_HUMAN(), true );
