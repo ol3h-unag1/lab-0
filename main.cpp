@@ -205,6 +205,8 @@ public:
 };
 
 using DTA = DeckType< std::vector, Card< Value, Suit > >;
+using CT = DTA::CardType;
+
 
 // // // // // // // // // // // // // 
 
@@ -228,6 +230,21 @@ struct EmptyOstreamModifier
     }
 } emptyOsMod;
 
+void CoutPreCardPost( std::string pre, CT card, std::string post )
+{
+    std::cout << pre;
+    std::cout << Card2Str( card ) << std::endl;
+    std::cout << post;
+}
+
+void CoutPreDeckPost( std::string pre, DTA::ContainerType const& deck, std::string post )
+{
+    for( auto& card : deck )
+    {
+        CoutPreCardPost( pre, card, post );
+    }
+}
+
 template< typename Card, typename PreCard = EmptyOstreamModifier, typename PostCard = EmptyOstreamModifier>
 void CoutCard( Card&& c, PreCard&& pre = std::move( emptyOsMod ), PostCard&& post = std::move( emptyOsMod ) )
 {
@@ -239,7 +256,6 @@ void CoutCard( Card&& c, PreCard&& pre = std::move( emptyOsMod ), PostCard&& pos
 template< typename Deck, typename PreCard = EmptyOstreamModifier, typename PostCard = EmptyOstreamModifier >
 void CoutDeck( Deck const& d, bool ordered = false, PreCard&& pre = std::move( emptyOsMod ), PostCard&& post = std::move( emptyOsMod ) )
 {
-     // std::cout << "CoutDeck" << " " << d.size() << std::endl;
      bool needEndingNewLine = true;
 
      std::size_t i = 0u;
@@ -790,8 +806,6 @@ void ___ASSERT_ATT_DEF_INVARIANT___()
 
 // ATTACKING IMPL
 
-using CT = DTA::CardType;
-
 DTA::CardType Defend( DTA::CardType );
 void AttackImpl( DTA::CardType attacker );
 
@@ -821,9 +835,7 @@ DTA::CardType ComputerLookingForInterSection( DTA::ContainerType& attackers, DTA
     };
 
     auto smallestCard = G_GRAB_SMALLEST_CARD( G_GET_COMPUTER()->SelectCards( intersector ) );
-    auto intersection = G_GET_COMPUTER()->GrabCard( smallestCard );
-    
-    return intersection;
+    return G_GET_COMPUTER()->GrabCard( smallestCard );
 }
 
 DTA::CardType ComputerLookingForDefender( DTA::ContainerType& attackers, DTA::ContainerType& defenders )
@@ -837,7 +849,7 @@ DTA::CardType ComputerLookingForDefender( DTA::ContainerType& attackers, DTA::Co
     return G_INVALID_CARD();
 }
 
-void AttackPrivateImpl( DTA::ContainerType& attackers, DTA::ContainerType& defenders, bool init = false );
+void AttackPrivateImpl( DTA::ContainerType& attackers, DTA::ContainerType& defenders, bool init );
 void AttackImpl( DTA::CardType attacker )
 {
     __COUT_FUNC_TRACE__( Card2Str( attacker) );
@@ -850,16 +862,20 @@ void AttackImpl( DTA::CardType attacker )
         defenders.push_back( defender );
         AttackPrivateImpl( attackers, defenders, true );
     }
+    else
+    {
+        G__ENDTURN( false );
+    }
 }
 
 void AttackPrivateImpl( DTA::ContainerType& attackers, DTA::ContainerType& defenders, bool init )
 {
     std::string msg = std::string( " init = " ) += std::string( init ? "true" : "false" );
     __COUT_FUNC_TRACE__( msg );
-    std::cout << "attakers:" << std::endl;
-    CoutDeck( attackers );
-    std::cout << "\ndefender:" << std::endl;
-    CoutDeck( defenders );
+    std::cout << "\t\tattakers:" << std::endl;
+    CoutPreDeckPost( "\t\t", attackers, "\n" );
+    std::cout << "\n\t\tdefenders:" << std::endl;
+    CoutPreDeckPost( "\t\t", defenders, "\n" );
 
     if( init )
         __ASSERT_MSG__( attackers.size() == defenders.size(),
@@ -877,8 +893,8 @@ void AttackPrivateImpl( DTA::ContainerType& attackers, DTA::ContainerType& defen
         auto intersect = ComputerLookingForInterSection( attackers, defenders );
         if( IsValid( intersect ) )
         {
-            attackers.emplace_back( std::move( intersect ) ); intersect = G_INVALID_CARD();
-            AttackPrivateImpl( attackers, defenders );
+            attackers.emplace_back( std::move( intersect ) );
+            AttackPrivateImpl( attackers, defenders, false );
         }
         else
         {
@@ -902,7 +918,7 @@ void AttackPrivateImpl( DTA::ContainerType& attackers, DTA::ContainerType& defen
         if( IsValid( defender ) )
         {
             defenders.push_back( defender );
-            AttackPrivateImpl( attackers, defenders );
+            AttackPrivateImpl( attackers, defenders, false );
         }
         else
         {
@@ -912,7 +928,7 @@ void AttackPrivateImpl( DTA::ContainerType& attackers, DTA::ContainerType& defen
     else
     {
         __ASSERT_MSG__( false,
-            "ComputerAttackImpl SOMETHING WRONG WITH SIZES, SIZES SHOULD DIFFER IN 1" );
+            "AttackPrivateImpl SOMETHING WRONG WITH SIZES, SIZES SHOULD DIFFER IN 1" );
     }
 }
 
