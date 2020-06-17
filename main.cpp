@@ -578,7 +578,7 @@ DTA::ContainerType GetHand( DTA::ContainerType& deck, std::size_t const handSize
     return DTA::ContainerType();
 }
 
-DTA::CardType GetSmallestValueGard( DTA::ContainerType const& d )
+DTA::CardType GetMinValueGard( DTA::ContainerType const& d )
 {
     static DTA::CardType const invalid{ Value::Invalid, Suit::Invalid };
     DTA::CardType const* smallestValueCard = &invalid;
@@ -600,7 +600,7 @@ DTA::CardType GetSmallestValueGard( DTA::ContainerType const& d )
     return *smallestValueCard;
 }
 
-DTA::CardType GetSmallestTrump( DTA::ContainerType const& d )
+DTA::CardType GetMinTrump( DTA::ContainerType const& d )
 {
     static DTA::CardType const invalid{ Value::Invalid, Suit::Invalid };
     DTA::CardType const* smallestTrump = &invalid;
@@ -667,18 +667,20 @@ DTA::CardType GetAbsSmallestCard( DTA::ContainerType const& d )
     return *smallest;
 }
 
-bool IsBigger( DTA::CardType biggerThenMe, DTA::CardType tested )
+bool CanAbsBeatMe( DTA::CardType me, DTA::CardType tested )
 {
-
-    DTA::ContainerType deck{ biggerThenMe, tested };
-    auto small = GetAbsSmallestCard( deck );
-
-    if( biggerThenMe == tested || small == biggerThenMe )
+    if( me.GetSuit() == tested.GetSuit() )
     {
-        false;
+        return me.GetValue() < tested.GetValue();
     }
 
-    return true;
+    if( tested.GetSuit() == G_GET_TRUMP() )
+    {
+        __ASSERT_MSG__( me.GetSuit() != G_GET_TRUMP(), "CanAbsBeatMe:: Same suits branch should be checked before!" );
+        return true;
+    }
+
+    return false;
 }
 
 // // // // // // // // // // // // // 
@@ -709,8 +711,8 @@ bool SetAttackerDefenderRoles( Player const& a, Player const& b )
         DTA::CardType const card;
     };   // definition of 2 variables of this struct type
     
-    PlayerMapped2Card left2smallestTrump( &a, a.SelectCard( GetSmallestTrump ) ); // left right doesnt mean nothing, just to distinguish
-    PlayerMapped2Card right2smallestTrump( &b, b.SelectCard( GetSmallestTrump ) );
+    PlayerMapped2Card left2smallestTrump( &a, a.SelectCard( GetMinTrump ) ); // left right doesnt mean nothing, just to distinguish
+    PlayerMapped2Card right2smallestTrump( &b, b.SelectCard( GetMinTrump ) );
 
     std::cout << PlayerID2Str( left2smallestTrump.player->GetID() ) << " smallest trump: " << Card2Str( left2smallestTrump.card ) << std::endl;
     std::cout << PlayerID2Str( right2smallestTrump.player->GetID() ) << " smallest trump: " << Card2Str( right2smallestTrump.card ) << std::endl;
@@ -742,8 +744,8 @@ bool SetAttackerDefenderRoles( Player const& a, Player const& b )
 }
     else // no one have trumps, detecting by smallest value of card they have ( or player B if smallest values are equal )
 {
-    PlayerMapped2Card left2smallestCard( &a, a.SelectCard( GetSmallestValueGard ) );
-    PlayerMapped2Card right2smallestCard( &b, b.SelectCard( GetSmallestValueGard ) );
+    PlayerMapped2Card left2smallestCard( &a, a.SelectCard( GetMinValueGard ) );
+    PlayerMapped2Card right2smallestCard( &b, b.SelectCard( GetMinValueGard ) );
     if( left2smallestCard.card.GetValue() < right2smallestCard.card.GetValue() )
     {
         attacker = left2smallestCard.player;
@@ -957,11 +959,12 @@ template< typename Functor >
 DTA::CardType ChooseDefender( DTA::CardType attacker, Functor&& choicer )
 {
     auto& defenderPlayer = G_GAME_INFO.PLAYERS[ G_GAME_INFO.DEFENDER_ID ];
-    auto bigger = [&attacker]( DTA::CardType card )
+    auto canBeatAttacker = [&attacker]( DTA::CardType card )
     {
-        return IsBigger( attacker, card );
+        return CanAbsBeatMe( attacker, card );
     };
-    auto defenderCandidates = defenderPlayer.SelectCards( bigger );
+
+    auto defenderCandidates = defenderPlayer.SelectCards( canBeatAttacker );
     if( defenderCandidates.size() )
     {
         std::cout << "\n\t" << PlayerID2Str( defenderPlayer.GetID() ) << " can use selected cards for defense: " << std::endl;
@@ -974,7 +977,7 @@ DTA::CardType ChooseDefender( DTA::CardType attacker, Functor&& choicer )
 
 DTA::CardType ComputerDefend( DTA::CardType attacker )
 {
-    __ASSERT_MSG__( G_GET_ATTACKER() == G_GET_HUMAN() && G_GET_DEFENDER == G_GET_COMPUTER(), 
+    __ASSERT_MSG__( G_GET_ATTACKER() == G_GET_HUMAN() && G_GET_DEFENDER() == G_GET_COMPUTER(), 
         "ComputerDefend:: ATTACKER / DEFENDER MISMATCH " );
 
     auto computerChoicer = []( DTA::ContainerType const& candidates )
@@ -992,8 +995,8 @@ DTA::CardType ComputerDefend( DTA::CardType attacker )
 
 DTA::CardType HumanDefend( DTA::CardType attacker )
 {
-    __ASSERT_MSG__( G_GET_ATTACKER() == G_GET_COMPUTER() && G_GET_DEFENDER == G_GET_HUMAN(), "HumanDefend:: 
-        ATTACKER / DEFENDER MISMATCH " );
+    __ASSERT_MSG__( G_GET_ATTACKER() == G_GET_COMPUTER() && G_GET_DEFENDER() == G_GET_HUMAN(), 
+        "HumanDefend:: ATTACKER / DEFENDER MISMATCH " );
 
     auto humanChoicer = []( DTA::ContainerType const& candidates )
     {
