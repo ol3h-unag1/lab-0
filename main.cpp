@@ -207,7 +207,6 @@ public:
 using DTA = DeckType< std::vector, Card< Value, Suit > >;
 using CT = DTA::CardType;
 
-
 // // // // // // // // // // // // // 
 
 template< typename Container, typename Values, typename Suits >
@@ -233,7 +232,7 @@ struct EmptyOstreamModifier
 void CoutPreCardPost( std::string pre, CT card, std::string post )
 {
     std::cout << pre;
-    std::cout << Card2Str( card ) << std::endl;
+    std::cout << Card2Str( card );
     std::cout << post;
 }
 
@@ -838,17 +837,6 @@ DTA::CardType ComputerLookingForInterSection( DTA::ContainerType& attackers, DTA
     return G_GET_COMPUTER()->GrabCard( smallestCard );
 }
 
-DTA::CardType ComputerLookingForDefender( DTA::ContainerType& attackers, DTA::ContainerType& defenders )
-{
-    if( auto defender = Defend( attackers.back() ); IsValid( defender ) )
-    {
-        defenders.push_back( defender );
-        return defender;
-    }
-
-    return G_INVALID_CARD();
-}
-
 void AttackPrivateImpl( DTA::ContainerType& attackers, DTA::ContainerType& defenders, bool init );
 void AttackImpl( DTA::CardType attacker )
 {
@@ -873,9 +861,9 @@ void AttackPrivateImpl( DTA::ContainerType& attackers, DTA::ContainerType& defen
     std::string msg = std::string( " init = " ) += std::string( init ? "true" : "false" );
     __COUT_FUNC_TRACE__( msg );
     std::cout << "\t\tattakers:" << std::endl;
-    CoutPreDeckPost( "\t\t", attackers, "\n" );
+    CoutPreDeckPost( "\t\t", attackers, " " );
     std::cout << "\n\t\tdefenders:" << std::endl;
-    CoutPreDeckPost( "\t\t", defenders, "\n" );
+    CoutPreDeckPost( "\t\t", defenders, " " );
 
     if( init )
         __ASSERT_MSG__( attackers.size() == defenders.size(),
@@ -913,9 +901,8 @@ void AttackPrivateImpl( DTA::ContainerType& attackers, DTA::ContainerType& defen
     }
     // looking for defender branch
     else if( attackers.size() - defenders.size() == 1 )
-    {
-        auto defender = ComputerLookingForDefender( attackers, defenders );
-        if( IsValid( defender ) )
+    {       
+        if( auto defender = Defend( attackers.back() ); IsValid( defender ) )
         {
             defenders.push_back( defender );
             AttackPrivateImpl( attackers, defenders, false );
@@ -972,7 +959,7 @@ void Attack()
 
 // DEFENDING IMPL
 template< typename Functor >
-DTA::CardType ChooseDefender( DTA::CardType attacker, Functor&& choicer )
+DTA::CardType GetDefender( DTA::CardType attacker, Functor&& choicer )
 {
     auto& defenderPlayer = G_GAME_INFO.PLAYERS[ G_GAME_INFO.DEFENDER_ID ];
     auto canBeatAttacker = [&attacker]( DTA::CardType card )
@@ -1008,7 +995,7 @@ DTA::CardType ComputerDefend( DTA::CardType attacker )
         return smallest;
     };
 
-    return ChooseDefender( attacker, computerChoicer );
+    return GetDefender( attacker, computerChoicer );
 }
 
 DTA::CardType HumanDefend( DTA::CardType attacker )
@@ -1032,7 +1019,7 @@ DTA::CardType HumanDefend( DTA::CardType attacker )
         return candidates[ number ];
     };
 
-    return ChooseDefender( attacker, humanChoicer );
+    return GetDefender( attacker, humanChoicer );
 }
 
 DTA::CardType Defend( DTA::CardType attacker )
