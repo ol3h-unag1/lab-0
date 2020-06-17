@@ -861,9 +861,10 @@ void AttackPrivateImpl( DTA::ContainerType& attackers, DTA::ContainerType& defen
     std::string msg = std::string( " init = " ) += std::string( init ? "true" : "false" );
     __COUT_FUNC_TRACE__( msg );
     std::cout << "\t\tattakers:" << std::endl;
-    CoutPreDeckPost( "\t\t", attackers, " " );
+    CoutPreDeckPost( "\t\t ATTACKER: ", attackers, "\n" );
     std::cout << "\n\t\tdefenders:" << std::endl;
-    CoutPreDeckPost( "\t\t", defenders, " " );
+    CoutPreDeckPost( "\t\t DEFENDER:", defenders, "\n" );
+    std::cout << std::endl;
 
     if( init )
         __ASSERT_MSG__( attackers.size() == defenders.size(),
@@ -987,8 +988,6 @@ DTA::CardType ComputerDefend( DTA::CardType attacker )
 
     auto computerChoicer = []( DTA::ContainerType const& candidates )
     {
-        CoutPlayerHand( *G_GET_COMPUTER(), true );
-
         auto smallest = GetAbsMinCard( candidates );
         std::cout << "Computer defends with this card: " << Card2Str( smallest ) << std::endl;
 
