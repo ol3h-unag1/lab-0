@@ -427,7 +427,7 @@ std::string PlayerID2Str( Player::ID pk )
     return "";
 }
 
-void CoutPlayerHandNumered( DTA::ContainerType const& deck )
+void CoutDeckNumered( DTA::ContainerType const& deck )
 {
     auto preTab = []( std::ostream& os ) -> std::ostream&
     {
@@ -445,7 +445,7 @@ void CoutPlayerHand( Player const& p, bool numered = false )
 {
     if( numered )
     {
-        CoutPlayerHandNumered( p.hand_ );
+        CoutDeckNumered( p.hand_ );
     }
     else
     {
@@ -495,14 +495,14 @@ DTA::CardType::SuitType G_GET_TRUMP()
 
 DTA::CardType G_INVALID_CARD() { return { Value::Invalid, Suit::Invalid }; }
 
-DTA::CardType GetAbsSmallestCard( DTA::ContainerType const& );
+DTA::CardType GetAbsMinCard( DTA::ContainerType const& );
 
 template< typename DeckType >
 DTA::CardType G_GRAB_SMALLEST_CARD( DeckType&& deck )
 {
     if( deck.size() )
     {
-        auto smallest = GetAbsSmallestCard( deck );
+        auto smallest = GetAbsMinCard( deck );
         deck.erase( std::remove( deck.begin(), deck.end(), smallest ), deck.end() );
         return smallest;
     }
@@ -627,7 +627,7 @@ DTA::CardType GetMinTrump( DTA::ContainerType const& d )
     return *smallestTrump;
 }
 
-DTA::CardType GetAbsSmallestCard( DTA::ContainerType const& d )
+DTA::CardType GetAbsMinCard( DTA::ContainerType const& d )
 {
     static DTA::CardType const invalid{ Value::Invalid, Suit::Invalid };
     DTA::CardType const* smallest = &invalid;
@@ -968,6 +968,8 @@ DTA::CardType ChooseDefender( DTA::CardType attacker, Functor&& choicer )
     if( defenderCandidates.size() )
     {
         std::cout << "\n\t" << PlayerID2Str( defenderPlayer.GetID() ) << " can use selected cards for defense: " << std::endl;
+        CoutDeckNumered( defenderCandidates );
+
         auto defenderCard = choicer( defenderCandidates );
         return defenderPlayer.GrabCard( defenderCard );
     }
@@ -984,7 +986,7 @@ DTA::CardType ComputerDefend( DTA::CardType attacker )
     {
         CoutPlayerHand( *G_GET_COMPUTER(), true );
 
-        auto smallest = GetAbsSmallestCard( candidates );
+        auto smallest = GetAbsMinCard( candidates );
         std::cout << "Computer defends with this card: " << Card2Str( smallest ) << std::endl;
 
         return smallest;
@@ -1000,14 +1002,12 @@ DTA::CardType HumanDefend( DTA::CardType attacker )
 
     auto humanChoicer = []( DTA::ContainerType const& candidates )
     {
-        CoutPlayerHand( *G_GET_HUMAN(), true );
-
         std::size_t number = candidates.size();
         std::cin >> number;
         while( !std::cin || number >= candidates.size() )
         {
             std::cout << "Wronk!!" << std::endl;
-            CoutPlayerHand( *G_GET_HUMAN(), true );
+            CoutDeckNumered( candidates );
             std::cout << "Enter a number between 0 and " << candidates.size() - 1 << std::endl;
 
             std::cin >> number;
