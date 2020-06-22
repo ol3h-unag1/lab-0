@@ -1120,9 +1120,6 @@ void G__ENDTURN( bool swap )
 {
     std::cout << "Next turn" << std::endl;
 
-    if( true )
-        return;
-
     std::vector< Player* > needCards{ G_GET_ATTACKER() };
 
     if( swap )
@@ -1141,7 +1138,7 @@ void G__ENDTURN( bool swap )
         }
     }
     
-    __ASSERT_MSG__( !G_GET_HUMAN()->HandSize() && !G_GET_COMPUTER()->HandSize() , "EMPTY HANDS BOTH PLAYERS" );
+    __ASSERT_MSG__( G_GET_HUMAN()->HandSize() || G_GET_COMPUTER()->HandSize() , "EMPTY HANDS BOTH PLAYERS" );
 
     if( 0 == G_GET_HUMAN()->HandSize() )
     {
