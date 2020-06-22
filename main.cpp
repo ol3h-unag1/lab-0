@@ -849,7 +849,7 @@ DTA::CardType AddAttacker( DTA::ContainerType const& attackers, DTA::ContainerTy
     {
         std::cout << "Human can add attacker from the list: " << std::endl;
         CoutDeckNumered( intersections );
-        return HumanChoicer( intersections );
+        return G_GET_HUMAN()->GrabCard( HumanChoicer( intersections ) );
     }
 
     return G_INVALID_CARD();
