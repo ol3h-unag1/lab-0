@@ -814,7 +814,7 @@ void ComputerAttack()
     AttackImpl( G_GRAB_SMALLEST_CARD( *G_GET_COMPUTER() ) );
 }
  
-DTA::CardType ComputerLookingForInterSection( DTA::ContainerType& attackers, DTA::ContainerType& defenders )
+DTA::CardType AddAttacker( DTA::ContainerType& attackers, DTA::ContainerType& defenders )
 {
     auto intersector = [&attackers, &defenders]( CT const& card )
     {
@@ -833,8 +833,17 @@ DTA::CardType ComputerLookingForInterSection( DTA::ContainerType& attackers, DTA
         return false;
     };
 
-    auto smallestCard = G_GRAB_SMALLEST_CARD( G_GET_COMPUTER()->SelectCards( intersector ) );
-    return G_GET_COMPUTER()->GrabCard( smallestCard );
+    if( G_GET_ATTACKER() == G_GET_COMPUTER() )
+    {
+        auto smallestCard = G_GRAB_SMALLEST_CARD( G_GET_COMPUTER()->SelectCards( intersector ) );
+        return G_GET_COMPUTER()->GrabCard( smallestCard );
+    }
+    else
+    {
+
+    }
+
+    return G_INVALID_CARD();
 }
 
 void AttackPrivateImpl( DTA::ContainerType& attackers, DTA::ContainerType& defenders, bool init );
@@ -879,10 +888,10 @@ void AttackPrivateImpl( DTA::ContainerType& attackers, DTA::ContainerType& defen
     // looking for intersection branch
     if( attackers.size() == defenders.size() )
     {
-        auto intersect = ComputerLookingForInterSection( attackers, defenders );
-        if( IsValid( intersect ) )
+        auto att = AddAttacker( attackers, defenders );
+        if( IsValid( att ) )
         {
-            attackers.emplace_back( std::move( intersect ) );
+            attackers.emplace_back( std::move( att ) );
             AttackPrivateImpl( attackers, defenders, false );
         }
         else
