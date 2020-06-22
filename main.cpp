@@ -835,6 +835,11 @@ DTA::CardType AddAttacker( DTA::ContainerType& attackers, DTA::ContainerType& de
     };
 
     DTA::ContainerType intersections = G_GET_ATTACKER()->SelectCards( intersector );
+    if( intersections.empty() )
+    {
+        return G_INVALID_CARD();
+    }
+
     if( G_GET_ATTACKER() == G_GET_COMPUTER() )
     {
         auto smallestCard = G_GRAB_SMALLEST_CARD( intersections );
@@ -842,6 +847,8 @@ DTA::CardType AddAttacker( DTA::ContainerType& attackers, DTA::ContainerType& de
     }
     else
     {
+        std::cout << "Human can add attacker from the list: " << std::endl;
+        CoutPlayerHand( *G_GET_HUMAN(), true );
         return HumanChoicer( intersections );
     }
 
@@ -1010,10 +1017,16 @@ DTA::CardType ComputerDefend( DTA::CardType attacker )
 
 CT HumanChoicer( DTA::ContainerType const& candidates )
 {
-    std::size_t number = candidates.size();
+    std::size_t number = 0;
     std::cin >> number;
-    while( !std::cin || number >= candidates.size() )
+
+    while( true )
     {
+        if( std::cin && number < candidates.size() )
+        {
+            return candidates[ number ];
+        }
+
         std::cout << "Wronk!!" << std::endl;
         CoutDeckNumered( candidates );
         std::cout << "Enter a number between 0 and " << candidates.size() - 1 << std::endl;
@@ -1021,7 +1034,7 @@ CT HumanChoicer( DTA::ContainerType const& candidates )
         std::cin >> number;
     }
 
-    return candidates[ number ];
+    return G_INVALID_CARD();
 }
 
 DTA::CardType HumanDefend( DTA::CardType attacker )
