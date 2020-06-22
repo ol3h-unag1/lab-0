@@ -20,3 +20,4 @@ Debug/zero.ilk
 Debug/zero.exe
 Debug/main.obj
 .vs/zero/v16/.suo
+*.tlog
