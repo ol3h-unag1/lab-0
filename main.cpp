@@ -863,7 +863,7 @@ void AttackPrivateImpl( DTA::ContainerType& attackers, DTA::ContainerType& defen
     std::cout << "\t\tattakers:" << std::endl;
     CoutPreDeckPost( "\t\t ATTACKER: ", attackers, "\n" );
     std::cout << "\n\t\tdefenders:" << std::endl;
-    CoutPreDeckPost( "\t\t DEFENDER:", defenders, "\n" );
+    CoutPreDeckPost( "\t\t DEFENDER: ", defenders, "\n" );
     std::cout << std::endl;
 
     if( init )
@@ -888,7 +888,7 @@ void AttackPrivateImpl( DTA::ContainerType& attackers, DTA::ContainerType& defen
         else
         {
             __ASSERT_MSG__( attackers.size() == defenders.size(),
-                "ComputerAttackImpl ADDING TO THE WASTE:: DIFFERENT ATTACKERS AND DEFENDERS SIZES" );
+                "AttackPrivateImpl ADDING TO THE WASTE:: DIFFERENT ATTACKERS AND DEFENDERS SIZES" );
 
             for( std::size_t i = 0u; i < attackers.size(); ++i )
             {
@@ -1139,6 +1139,13 @@ void G__ENDTURN( bool swap )
     }
     
     __ASSERT_MSG__( G_GET_HUMAN()->HandSize() || G_GET_COMPUTER()->HandSize() , "EMPTY HANDS BOTH PLAYERS" );
+
+    for( auto& p : G_GAME_INFO.PLAYERS )
+    {
+        std::cout << PlayerID2Str( p.first ) << " hand after tossing: " << std::endl;
+        CoutPlayerHand( p.second, true );
+        std::cout << std::endl;
+    }
 
     if( 0 == G_GET_HUMAN()->HandSize() )
     {
