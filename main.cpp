@@ -813,7 +813,8 @@ void ComputerAttack()
     __COUT_FUNC_TRACE__( "" );
     AttackImpl( G_GRAB_SMALLEST_CARD( *G_GET_COMPUTER() ) );
 }
- 
+
+CT HumanChoicer( DTA::ContainerType const& candidates );
 DTA::CardType AddAttacker( DTA::ContainerType& attackers, DTA::ContainerType& defenders )
 {
     auto intersector = [&attackers, &defenders]( CT const& card )
@@ -833,14 +834,15 @@ DTA::CardType AddAttacker( DTA::ContainerType& attackers, DTA::ContainerType& de
         return false;
     };
 
+    DTA::ContainerType intersections = G_GET_ATTACKER()->SelectCards( intersector );
     if( G_GET_ATTACKER() == G_GET_COMPUTER() )
     {
-        auto smallestCard = G_GRAB_SMALLEST_CARD( G_GET_COMPUTER()->SelectCards( intersector ) );
+        auto smallestCard = G_GRAB_SMALLEST_CARD( intersections );
         return G_GET_COMPUTER()->GrabCard( smallestCard );
     }
     else
     {
-
+        return HumanChoicer( intersections );
     }
 
     return G_INVALID_CARD();
@@ -1006,28 +1008,28 @@ DTA::CardType ComputerDefend( DTA::CardType attacker )
     return GetDefender( attacker, computerChoicer );
 }
 
+CT HumanChoicer( DTA::ContainerType const& candidates )
+{
+    std::size_t number = candidates.size();
+    std::cin >> number;
+    while( !std::cin || number >= candidates.size() )
+    {
+        std::cout << "Wronk!!" << std::endl;
+        CoutDeckNumered( candidates );
+        std::cout << "Enter a number between 0 and " << candidates.size() - 1 << std::endl;
+
+        std::cin >> number;
+    }
+
+    return candidates[ number ];
+}
+
 DTA::CardType HumanDefend( DTA::CardType attacker )
 {
     __ASSERT_MSG__( G_GET_ATTACKER() == G_GET_COMPUTER() && G_GET_DEFENDER() == G_GET_HUMAN(), 
         "HumanDefend:: ATTACKER / DEFENDER MISMATCH " );
 
-    auto humanChoicer = []( DTA::ContainerType const& candidates )
-    {
-        std::size_t number = candidates.size();
-        std::cin >> number;
-        while( !std::cin || number >= candidates.size() )
-        {
-            std::cout << "Wronk!!" << std::endl;
-            CoutDeckNumered( candidates );
-            std::cout << "Enter a number between 0 and " << candidates.size() - 1 << std::endl;
-
-            std::cin >> number;
-        }
-
-        return candidates[ number ];
-    };
-
-    return GetDefender( attacker, humanChoicer );
+    return GetDefender( attacker, HumanChoicer );
 }
 
 DTA::CardType Defend( DTA::CardType attacker )
