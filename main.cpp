@@ -815,7 +815,7 @@ void ComputerAttack()
 }
 
 CT HumanChoicer( DTA::ContainerType const& candidates );
-DTA::CardType AddAttacker( DTA::ContainerType& attackers, DTA::ContainerType& defenders )
+DTA::CardType AddAttacker( DTA::ContainerType const& attackers, DTA::ContainerType const& defenders )
 {
     auto intersector = [&attackers, &defenders]( CT const& card )
     {
@@ -848,7 +848,7 @@ DTA::CardType AddAttacker( DTA::ContainerType& attackers, DTA::ContainerType& de
     else
     {
         std::cout << "Human can add attacker from the list: " << std::endl;
-        CoutPlayerHand( *G_GET_HUMAN(), true );
+        CoutDeckNumered( intersections );
         return HumanChoicer( intersections );
     }
 
