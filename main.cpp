@@ -1157,7 +1157,7 @@ bool G__INITIALIZATION()
 
 void G__ENDTURN( bool swap )
 {
-    std::cout << "Next turn." << ( swap ? "Defender" : "Attacker" ) << " won " << std::endl;
+    std::cout << "Next turn. " << ( swap ? "Defender" : "Attacker" ) << " won " << std::endl;
 
     std::vector< Player* >  needCards{ G_GET_ATTACKER() };
 
