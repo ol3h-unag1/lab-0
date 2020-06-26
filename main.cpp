@@ -928,6 +928,20 @@ void AttackPrivateImpl( DTA::ContainerType& attackers, DTA::ContainerType& defen
         }
         else
         {
+            // defender losses and takes all cards
+            for( auto&& c : defenders )
+                G_GET_DEFENDER()->AddCard( c );
+
+            defenders.clear();
+
+            for( auto&& c : attackers )
+                G_GET_DEFENDER()->AddCard( c );
+
+            attackers.clear();
+
+            std::cout << "\n\t -> -> -> DEFENDER's HAND AFFTER TOSSING ALL CARDS INTO: " << std::endl;
+            CoutPlayerHand( *G_GET_DEFENDER(), true );
+
             G__ENDTURN( false ); // Attacker won
         }
     }
@@ -962,7 +976,7 @@ void HumanAttack()
 
 void Attack()
 {
-    __COUT_FUNC_TRACE__("");
+    __COUT_FUNC_TRACE__( PlayerID2Str( G_GET_ATTACKER()->GetID() ) );
 
     if( G_GET_ATTACKER() == G_GET_HUMAN() )
     {
@@ -1142,9 +1156,9 @@ bool G__INITIALIZATION()
 
 void G__ENDTURN( bool swap )
 {
-    std::cout << "Next turn" << std::endl;
+    std::cout << "Next turn." << ( swap ? "Defender" : "Attacker" ) << " won " << std::endl;
 
-    std::vector< Player* > needCards{ G_GET_ATTACKER() };
+    std::vector< Player* >  { G_GET_ATTACKER() };
 
     if( swap )
     {
@@ -1164,10 +1178,10 @@ void G__ENDTURN( bool swap )
     
     __ASSERT_MSG__( G_GET_HUMAN()->HandSize() || G_GET_COMPUTER()->HandSize() , "EMPTY HANDS BOTH PLAYERS" );
 
-    for( auto& p : G_GAME_INFO.PLAYERS )
+    for( auto player : needCards )
     {
-        std::cout << PlayerID2Str( p.first ) << " hand after tossing: " << std::endl;
-        CoutPlayerHand( p.second, true );
+        std::cout << PlayerID2Str( player->GetId() ) << " hand after tossing: " << std::endl;
+        CoutPlayerHand( *player, true );
         std::cout << std::endl;
     }
 
