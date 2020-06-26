@@ -941,6 +941,7 @@ void AttackPrivateImpl( DTA::ContainerType& attackers, DTA::ContainerType& defen
 
             std::cout << "\n\t -> -> -> DEFENDER's HAND AFFTER TOSSING ALL CARDS INTO: " << std::endl;
             CoutPlayerHand( *G_GET_DEFENDER(), true );
+            std::cout << std::endl;
 
             G__ENDTURN( false ); // Attacker won
         }
@@ -1158,7 +1159,7 @@ void G__ENDTURN( bool swap )
 {
     std::cout << "Next turn." << ( swap ? "Defender" : "Attacker" ) << " won " << std::endl;
 
-    std::vector< Player* >  { G_GET_ATTACKER() };
+    std::vector< Player* >  needCards{ G_GET_ATTACKER() };
 
     if( swap )
     {
@@ -1180,7 +1181,7 @@ void G__ENDTURN( bool swap )
 
     for( auto player : needCards )
     {
-        std::cout << PlayerID2Str( player->GetId() ) << " hand after tossing: " << std::endl;
+        std::cout << PlayerID2Str( player->GetID() ) << " hand after tossing: " << std::endl;
         CoutPlayerHand( *player, true );
         std::cout << std::endl;
     }
