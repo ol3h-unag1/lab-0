@@ -1,4 +1,5 @@
 ﻿#include <iostream>
+#include <sstream>
 
 #include <string>
 #include <vector>
@@ -11,6 +12,8 @@
 
 #include <algorithm>
 #include <random>
+
+#include <exception>
 
 #include <cassert>
 
@@ -814,7 +817,7 @@ void ComputerAttack()
     AttackImpl( G_GRAB_SMALLEST_CARD( *G_GET_COMPUTER() ) );
 }
 
-CT HumanChoicer( DTA::ContainerType const& candidates );
+CT HumanAttackChoicer( DTA::ContainerType const& candidates );
 DTA::CardType AddAttacker( DTA::ContainerType const& attackers, DTA::ContainerType const& defenders )
 {
     auto intersector = [&attackers, &defenders]( CT const& card )
@@ -849,7 +852,7 @@ DTA::CardType AddAttacker( DTA::ContainerType const& attackers, DTA::ContainerTy
     {
         std::cout << "Human can add attacker from the list: " << std::endl;
         CoutDeckNumered( intersections );
-        return G_GET_HUMAN()->GrabCard( HumanChoicer( intersections ) );
+        return G_GET_HUMAN()->GrabCard( HumanAttackChoicer( intersections ) );
     }
 
     return G_INVALID_CARD();
@@ -1030,34 +1033,64 @@ DTA::CardType ComputerDefend( DTA::CardType attacker )
     return GetDefender( attacker, computerChoicer );
 }
 
-CT HumanChoicer( DTA::ContainerType const& candidates )
+CT HumanChoicerImpl( DTA::ContainerType const& candidates, bool* outStopped = nullptr, std::string stopper = "")
 {
-    std::size_t number = 0;
-    std::cin >> number;
+    std::string input;
+    std::cin >> input;
 
     while( true )
     {
-        if( std::cin && number < candidates.size() )
+        if( stopper.size() && ( input == stopper ) && outStopped )
         {
-            return candidates[ number ];
+            *outStopped = true;
+            return G_INVALID_CARD();
         }
 
-        std::cout << "Wronk!!" << std::endl;
-        CoutDeckNumered( candidates );
-        std::cout << "Enter a number between 0 and " << candidates.size() - 1 << std::endl;
+        try
+        {
+            std::size_t number = std::stoul( input );
+            if( std::cin && number < candidates.size() )
+            {
+                return candidates[ number ];
+            }
 
-        std::cin >> number;
+            std::cout << "Wronk!!" << std::endl;
+            CoutDeckNumered( candidates );
+            std::cout << "Enter a number between 0 and " << candidates.size() - 1 << std::endl;
+
+            std::cin >> number;
+
+        }
+        catch( std::exception& e )
+        {
+            std::cout << e.what() << std::endl;
+        }
+        catch( ... )
+        {
+            std::cout << "HumanChoicer:: UNHANDLED EXCEPTION" << std::end;
+        }
     }
 
     return G_INVALID_CARD();
 }
+
+CT HumanAttackChoicer( DTA::ContainerType const& candidates )
+{
+    return G_INVALID_CARD();
+}
+
+CT HumanDefendChoicer( DTA::ContainerType const& candidates )
+{
+    return G_INVALID_CARD();
+}
+
 
 DTA::CardType HumanDefend( DTA::CardType attacker )
 {
     __ASSERT_MSG__( G_GET_ATTACKER() == G_GET_COMPUTER() && G_GET_DEFENDER() == G_GET_HUMAN(), 
         "HumanDefend:: ATTACKER / DEFENDER MISMATCH " );
 
-    return GetDefender( attacker, HumanChoicer );
+    return GetDefender( attacker, HumanDefendChoicer );
 }
 
 DTA::CardType Defend( DTA::CardType attacker )
