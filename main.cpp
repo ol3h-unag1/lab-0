@@ -1056,18 +1056,17 @@ CT HumanChoicerImpl( DTA::ContainerType const& candidates, bool* outStopped = nu
 
             std::cout << "Wronk!!" << std::endl;
             CoutDeckNumered( candidates );
-            std::cout << "Enter a number between 0 and " << candidates.size() - 1 << std::endl;
+            std::cout << "Enter a number between 0 and " << candidates.size() - 1 << std::endl;    
 
-            std::cin >> number;
-
+            std::cin >> input;
         }
         catch( std::exception& e )
         {
-            std::cout << e.what() << std::endl;
+            __COUT_FUNC_TRACE__( e.what() );
         }
         catch( ... )
         {
-            std::cout << "HumanChoicer:: UNHANDLED EXCEPTION" << std::end;
+            std::cout << "HumanChoicer:: UNHANDLED EXCEPTION" << std::endl;
         }
     }
 
@@ -1076,14 +1075,30 @@ CT HumanChoicerImpl( DTA::ContainerType const& candidates, bool* outStopped = nu
 
 CT HumanAttackChoicer( DTA::ContainerType const& candidates )
 {
-    return G_INVALID_CARD();
+    bool stopped = false;
+    auto attacker = HumanChoicerImpl( candidates, &stopped, "C" );
+    
+    if( stopped )
+    {
+        return G_INVALID_CARD();
+    }
+
+    return attacker;
 }
 
 CT HumanDefendChoicer( DTA::ContainerType const& candidates )
 {
-    return G_INVALID_CARD();
-}
+    bool stopped = false;
+    
+    auto defender = HumanChoicerImpl( candidates, &stopped, "L" );
 
+    if( stopped )
+    {
+        return G_INVALID_CARD();
+    }
+
+    return defender;
+}
 
 DTA::CardType HumanDefend( DTA::CardType attacker )
 {
