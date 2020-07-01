@@ -1076,7 +1076,7 @@ CT HumanChoicerImpl( DTA::ContainerType const& candidates, bool* outStopped = nu
 CT HumanAttackChoicer( DTA::ContainerType const& candidates )
 {
     bool stopped = false;
-    auto attacker = HumanChoicerImpl( candidates, &stopped, "Cancel" );
+    auto attacker = HumanChoicerImpl( candidates, &stopped, "C" );
     
     if( stopped )
     {
@@ -1090,7 +1090,7 @@ CT HumanDefendChoicer( DTA::ContainerType const& candidates )
 {
     bool stopped = false;
     
-    auto defender = HumanChoicerImpl( candidates, &stopped, "Take" );
+    auto defender = HumanChoicerImpl( candidates, &stopped, "L" );
 
     if( stopped )
     {
