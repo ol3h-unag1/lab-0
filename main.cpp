@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <random>
 
+#include <exception>
 #include <cassert>
 
 
@@ -28,6 +29,9 @@ namespace MySetup
 // // // // // // // // // // // // // 
 
 std::size_t const C_DEFAULT_HANDSIZE = 6;
+
+std::string const C_STOP_ATTACK = "GIVE";
+std::string const C_STOP_DEFENCE = "TAKE";
 
 class Player;
 void G__ENDTURN( bool swap );
@@ -849,8 +853,11 @@ DTA::CardType AddAttacker( DTA::ContainerType const& attackers, DTA::ContainerTy
     {
         std::cout << "Human can add attacker from the list: " << std::endl;
         CoutDeckNumered( intersections );
-        return G_GET_HUMAN()->GrabCard( HumanChoicer( intersections ) );
+        auto humanChoice = HumanChoicer( intersections );
+        return G_GET_HUMAN()->GrabCard( humanChoice );
     }
+
+    __ASSERT_MSG__( false, "AddAttacker:: SOMETHING WRONG! THIS BRANCH IS FORBIDDEN!" );
 
     return G_INVALID_CARD();
 }
@@ -1030,24 +1037,66 @@ DTA::CardType ComputerDefend( DTA::CardType attacker )
     return GetDefender( attacker, computerChoicer );
 }
 
-CT HumanChoicer( DTA::ContainerType const& candidates )
+// // // // // // // // // // // // // // 
+   
+// // HUMAN CHOICER IMPL
+CT HumanChoicerImpl( DTA::ContainerType const& candidates, std::string interruptor )
 {
-    std::size_t number = 0;
-    std::cin >> number;
-
-    while( true )
+    std::string input;
+    while( std::cin >> input )
     {
-        if( std::cin && number < candidates.size() )
+        if( input == interruptor )
         {
-            return candidates[ number ];
+            return G_INVALID_CARD();
         }
 
-        std::cout << "Wronk!!" << std::endl;
-        CoutDeckNumered( candidates );
-        std::cout << "Enter a number between 0 and " << candidates.size() - 1 << std::endl;
+        try
+        {
+            std::size_t number = std::stoul( input );
+            if( number < candidates.size() )
+            {
+                return candidates[ number ];
+            }
 
-        std::cin >> number;
+            std::cout << "Wronk!!" << std::endl;
+            CoutDeckNumered( candidates );
+            std::cout << "Enter a number between 0 and " << candidates.size() - 1 << std::endl;
+        }
+        catch ( std::invalid_argument& e )
+        {
+            __COUT_FUNC_TRACE__( e.what() );
+        }
+        catch( std::out_of_range& e )
+        {
+            __COUT_FUNC_TRACE__( e.what() );
+        }
+        catch( std::exception& e )
+        {
+            __COUT_FUNC_TRACE__( e.what() );
+            __ASSERT_MSG__( false, "HumanChoicerImpl:: SOMETHING WRONG! STD::EXCEPTION NOT EXPECTED!" );
+        }
+        catch( ... )
+        {
+            __ASSERT_MSG__( false, "HumanChoicerImpl:: SOMETHING WRONG! UNHADLED EXCEPTION!" );
+        }
     }
+
+    __ASSERT_MSG__( false, "HumanChoicerImpl:: SOMETHING WRONG! THIS BRANCH IS FORBIDDEN!" );
+    return G_INVALID_CARD();
+}
+
+CT HumanChoicer( DTA::ContainerType const& candidates )
+{
+    if( G_GET_ATTACKER() == G_GET_HUMAN() )
+    {
+        return HumanChoicerImpl( candidates, C_STOP_ATTACK ); 
+    }
+    else
+    {
+        return HumanChoicerImpl( candidates, C_STOP_DEFENCE );
+    }
+
+    __ASSERT_MSG__( false, "HumanChoicer:: SOMETHING WRONG! THIS BRANCH IS FORBIDDEN!" );
 
     return G_INVALID_CARD();
 }
