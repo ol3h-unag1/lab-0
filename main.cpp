@@ -365,7 +365,7 @@ void CoutDeck( Deck const& d, bool ordered = false, PreCard&& pre = std::move( e
      void AddCard( DTA::CardType card )
      {
          hand_.push_back( card );
-         SortIml();
+         SortImpl();
      }
 
      template< typename F >
@@ -414,7 +414,7 @@ void CoutDeck( Deck const& d, bool ordered = false, PreCard&& pre = std::move( e
              __ASSERT_MSG__( false, "HAND IS NOT EMPTY" );
          }
 
-         SortIml();
+         SortImpl();
      }
 
      std::size_t HandSize() const { return hand_.size(); }
@@ -432,10 +432,10 @@ void CoutDeck( Deck const& d, bool ordered = false, PreCard&& pre = std::move( e
 private:
     void RemoveCardImpl( DTA::CardType card )
     {
-        SortIml();
+        SortImpl();
         hand_.erase( std::remove( hand_.begin(), hand_.end(), card ), hand_.end() );
     }
-    void SortIml()
+    void SortImpl()
     {
         std::sort( hand_.begin(), hand_.end(), []( DTA::CardType const& left, DTA::CardType const& right )
             {
@@ -984,6 +984,7 @@ void HumanAttack()
     auto& human = *G_GET_HUMAN();
     CoutPlayerHand( human, true );
 
+    // first attack card can't be stopped
     std::size_t number = human.HandSize();
     std::cin >> number;
     while( !std::cin || number >= human.HandSize() )
@@ -1060,7 +1061,7 @@ CT HumanChoicerImpl( DTA::ContainerType const& candidates, std::string interrupt
     std::string input;
     while( std::cin >> input )
     {
-        if( input == interruptor )
+        if( interruptor.size() && input == interruptor )
         {
             return G_INVALID_CARD();
         }
@@ -1073,7 +1074,7 @@ CT HumanChoicerImpl( DTA::ContainerType const& candidates, std::string interrupt
                 return candidates[ number ];
             }
 
-            std::cout << "Wronk!!" << std::endl;
+            std::cout << "Wronk!!" << std::endl << std::endl;
             CoutDeckNumered( candidates );
             std::cout << "Enter a number between 0 and " << candidates.size() - 1 << " in order to select a card." << std::endl;
             std::cout << "Or enter '" << interruptor << "' in order to " << Interruptor2PromptMsg( interruptor ) << std::endl;
