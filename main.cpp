@@ -877,6 +877,13 @@ DTA::CardType AddAttacker( DTA::ContainerType const& attackers, DTA::ContainerTy
     return G_INVALID_CARD();
 }
 
+void CoutDefendersHandAfterTaking()
+{
+    std::cout << "\n\t" << PlayerID2Str( G_GET_DEFENDER()->GetID() ) << "'s DEFENDER HAND AFFTER TOSSING ALL CARDS INTO: " << std::endl;
+    CoutPlayerHand( *G_GET_DEFENDER(), true );
+    std::cout << std::endl;
+}
+
 void AttackPrivateImpl( DTA::ContainerType& attackers, DTA::ContainerType& defenders, bool init );
 void AttackImpl( DTA::CardType attacker )
 {
@@ -892,8 +899,12 @@ void AttackImpl( DTA::CardType attacker )
     }
     else
     {
+        attackers.clear();
+        G_GET_DEFENDER()->AddCard( attacker );
         G__ENDTURN( false );
     }
+
+    __ASSERT_MSG__( attackers.empty(), "ATTACKERS SHOULD BE EMPTY()" );
 }
 
 void AttackPrivateImpl( DTA::ContainerType& attackers, DTA::ContainerType& defenders, bool init )
@@ -960,10 +971,8 @@ void AttackPrivateImpl( DTA::ContainerType& attackers, DTA::ContainerType& defen
                 G_GET_DEFENDER()->AddCard( c );
 
             attackers.clear();
-
-            std::cout << "\n\t -> -> -> DEFENDER's HAND AFFTER TOSSING ALL CARDS INTO: " << std::endl;
-            CoutPlayerHand( *G_GET_DEFENDER(), true );
-            std::cout << std::endl;
+            
+            CoutDefendersHandAfterTaking();
 
             G__ENDTURN( false ); // Attacker won
         }
