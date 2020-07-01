@@ -33,6 +33,21 @@ std::size_t const C_DEFAULT_HANDSIZE = 6;
 std::string const C_STOP_ATTACK = "GIVE";
 std::string const C_STOP_DEFENCE = "TAKE";
 
+std::string Interruptor2PromptMsg( std::string const& interruptor )
+{
+    if( interruptor == C_STOP_ATTACK )
+    {
+        return "stop attack.";
+    }
+
+    if( interruptor == C_STOP_DEFENCE )
+    {
+        return " stop defence.";
+    }
+
+    return "!!! UKNOWN INTERRUPTOR !!!";
+}
+
 class Player;
 void G__ENDTURN( bool swap );
 
@@ -1060,7 +1075,8 @@ CT HumanChoicerImpl( DTA::ContainerType const& candidates, std::string interrupt
 
             std::cout << "Wronk!!" << std::endl;
             CoutDeckNumered( candidates );
-            std::cout << "Enter a number between 0 and " << candidates.size() - 1 << std::endl;
+            std::cout << "Enter a number between 0 and " << candidates.size() - 1 << " in order to select a card." << std::endl;
+            std::cout << "Or enter '" << interruptor << "' in order to " << Interruptor2PromptMsg( interruptor ) << std::endl;
         }
         catch ( std::invalid_argument& e )
         {
