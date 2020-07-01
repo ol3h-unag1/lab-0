@@ -904,7 +904,7 @@ void AttackImpl( DTA::CardType attacker )
         G__ENDTURN( false );
     }
 
-    __ASSERT_MSG__( attackers.empty(), "ATTACKERS SHOULD BE EMPTY()" );
+    __ASSERT_MSG__( attackers.empty(), "AttackImpl:: ATTACKERS SHOULD BE EMPTY()" );
 }
 
 void AttackPrivateImpl( DTA::ContainerType& attackers, DTA::ContainerType& defenders, bool init )
